@@ -533,7 +533,40 @@ def upload_to_dropbox(file_content, file_name):
     dbx = dropbox.Dropbox(DROPBOX_ACCESS_TOKEN)
     path = f"/Kobo/MyBooks/{file_name}"
     dbx.files_upload(file_content, path, mode=dropbox.files.WriteMode("overwrite"))
+    update_simple_index(dbx)
     return path
+
+
+def update_simple_index(dbx):
+    folder_path = "/Kobo/MyBooks"
+    entries = dbx.files_list_folder(folder_path).entries
+    files = [
+        entry.name
+        for entry in entries
+        if hasattr(entry, "name")
+        and entry.name.lower().endswith((".epub", ".pdf"))
+        and entry.name != "index.html"
+    ]
+    files.sort()
+    links = "\n".join(
+        [f'<div><a href="{name}">{name}</a></div>' for name in files]
+    )
+    html = (
+        "<!doctype html>"
+        "<html><head><meta charset='utf-8'/>"
+        "<title>Kobo Library</title>"
+        "<style>body{font-family:Arial,Helvetica,sans-serif;"
+        "font-size:32px;line-height:1.5;}a{display:block;padding:12px 0;}</style>"
+        "</head><body>"
+        "<h1>Kobo Library</h1>"
+        f"{links}"
+        "</body></html>"
+    )
+    dbx.files_upload(
+        html.encode("utf-8"),
+        f"{folder_path}/index.html",
+        mode=dropbox.files.WriteMode("overwrite"),
+    )
 
 
 def normalize_pdf_text(text):
