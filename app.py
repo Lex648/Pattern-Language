@@ -60,7 +60,8 @@ Titel: Beeldend en krachtig (geen dubbele punten).
 The Conflict: Eén vetgedrukte probleemstelling die de spanning tussen wens en realiteit
 blootlegt (geen oplossingen!).
 
-The Deep Analysis (Tripartite): Minimaal 450 woorden, verdeeld over exact 3 paragrafen.
+The Deep Analysis (Tripartite): Exact 3 paragrafen van elk ongeveer 100 woorden
+(totaal ca. 300 woorden).
 Elke paragraaf moet een diepgravende synthese zijn van één van de drie bronnen.
 De bronnen moeten het spanningsveld verdiepen, niet louter feiten bevestigen.
 Synthese boven samenvatting: de tekst gaat over het onderwerp en het conflict, niet
@@ -92,7 +93,9 @@ Geen vrijblijvende slotzinnen. Bij twijfel: dieper, scherper, filosofischer.
 
 load_dotenv()
 ENV_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
-DROPBOX_ACCESS_TOKEN = os.getenv("DROPBOX_ACCESS_TOKEN", "").strip()
+DROPBOX_APP_KEY = os.getenv("DROPBOX_APP_KEY", "").strip()
+DROPBOX_APP_SECRET = os.getenv("DROPBOX_APP_SECRET", "").strip()
+DROPBOX_REFRESH_TOKEN = os.getenv("DROPBOX_REFRESH_TOKEN", "").strip()
 
 
 def get_client(api_key: str):
@@ -137,6 +140,25 @@ def generate_index(client, topic: str):
     return data
 
 
+def generate_short_title(client, topic: str):
+    messages = [
+        {"role": "system", "content": V4_SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": (
+                "Bedenk een korte, krachtige boektitel (maximaal 3 woorden).\n"
+                'Output als JSON: {"title": "..."}\n'
+                f"Onderwerp: {topic}"
+            ),
+        },
+    ]
+    data = call_openai_json(client, messages, temperature=0.4)
+    title = (data.get("title") or "").strip()
+    if not title:
+        raise ValueError("Korte titel ontbreekt in de AI-output.")
+    return title
+
+
 def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=None):
     batch_list = [p for p in index_entries if p["number"] in batch_numbers]
     retry_suffix = ""
@@ -153,7 +175,7 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
                 "BELANGRIJK: Scheid de 3 paragrafen van de Deep Analysis ALTIJD met een lege regel, "
                 "zodat ze technisch herkenbaar zijn als 3 blokken.\n"
                 "WEES ZEER UITGEBREID. Elke paragraaf moet minimaal 150 woorden bevatten. "
-                "Als je te kort schrijft, faalt het systeem. Analyseer de bronnen diepgaand.\n"
+                "Analyseer de bronnen diepgaand.\n"
                 "Output als JSON met dit schema:\n"
                 "{"
                 '"patterns": ['
@@ -341,8 +363,8 @@ def validate_pattern(pattern):
     if len(paragraphs) != 3:
         raise ValueError("The Deep Analysis moet exact 3 paragrafen bevatten.")
     total_words = sum(len(p.split()) for p in paragraphs)
-    if total_words < 350:
-        raise ValueError("The Deep Analysis moet minimaal 350 woorden bevatten.")
+    if total_words < 250:
+        raise ValueError("The Deep Analysis moet minimaal 250 woorden bevatten.")
     resolution = pattern.get("resolution", "").strip()
     if not resolution.startswith("Therefore,"):
         raise ValueError('The Resolution moet starten met "Therefore,".')
@@ -528,9 +550,18 @@ def convert_with_pandoc(markdown_text, title, output_basename, patterns=None, au
 
 
 def upload_to_dropbox(file_content, file_name):
-    if not DROPBOX_ACCESS_TOKEN:
-        raise RuntimeError("DROPBOX_ACCESS_TOKEN ontbreekt in .env.")
-    dbx = dropbox.Dropbox(DROPBOX_ACCESS_TOKEN)
+    app_key = st.secrets.get("DROPBOX_APP_KEY", DROPBOX_APP_KEY)
+    app_secret = st.secrets.get("DROPBOX_APP_SECRET", DROPBOX_APP_SECRET)
+    refresh_token = st.secrets.get("DROPBOX_REFRESH_TOKEN", DROPBOX_REFRESH_TOKEN)
+    if not (app_key and app_secret and refresh_token):
+        raise RuntimeError(
+            "DROPBOX_APP_KEY, DROPBOX_APP_SECRET of DROPBOX_REFRESH_TOKEN ontbreekt in .env."
+        )
+    dbx = dropbox.Dropbox(
+        app_key=app_key,
+        app_secret=app_secret,
+        oauth2_refresh_token=refresh_token,
+    )
     path = f"/Kobo/MyBooks/{file_name}"
     dbx.files_upload(file_content, path, mode=dropbox.files.WriteMode("overwrite"))
     update_simple_index(dbx)
@@ -602,6 +633,7 @@ def init_state():
     st.session_state.setdefault("topic", "")
     st.session_state.setdefault("api_key", ENV_API_KEY or "")
     st.session_state.setdefault("author", "")
+    st.session_state.setdefault("short_title", "")
     st.session_state.setdefault("index_data", None)
     st.session_state.setdefault("patterns", {})
     st.session_state.setdefault("batch_status", {1: "pending", 2: "pending", 3: "pending", 4: "pending"})
@@ -630,6 +662,7 @@ def reset_generation():
     st.session_state.last_raw_ai_output = ""
     st.session_state.final_pdf_bytes = None
     st.session_state.epub_bytes = None
+    st.session_state.short_title = ""
 
 
 def batch_numbers(batch_id):
@@ -732,6 +765,8 @@ def main():
                 try:
                     client = get_client(api_key)
                     st.session_state.index_data = generate_index(client, topic)
+                    if not st.session_state.short_title:
+                        st.session_state.short_title = generate_short_title(client, topic)
                     st.session_state.last_error = ""
                 except Exception as exc:
                     st.session_state.last_error = str(exc)
@@ -841,8 +876,9 @@ def main():
         st.subheader("Conversie")
         if st.button("Maak PDF en ePub"):
             try:
+                book_title = st.session_state.short_title or st.session_state.topic
                 markdown_text = assemble_markdown(
-                    st.session_state.topic,
+                    book_title,
                     st.session_state.index_data,
                     st.session_state.patterns,
                     st.session_state.front_matter,
@@ -850,7 +886,7 @@ def main():
                 st.session_state.markdown = markdown_text
                 pdf_bytes, epub_bytes = convert_with_pandoc(
                     markdown_text,
-                    st.session_state.topic,
+                    book_title,
                     f"pattern_language_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
                     patterns=list(st.session_state.patterns.values()),
                     author=st.session_state.author.strip() or None,
@@ -859,8 +895,8 @@ def main():
                 st.session_state.epub_bytes = epub_bytes
                 st.session_state.last_error = ""
                 try:
-                    pdf_name = make_safe_filename(st.session_state.topic, "pdf")
-                    epub_name = make_safe_filename(st.session_state.topic, "epub")
+                    pdf_name = make_safe_filename(book_title, "pdf")
+                    epub_name = make_safe_filename(book_title, "epub")
                     pdf_path = upload_to_dropbox(pdf_bytes, pdf_name)
                     epub_path = upload_to_dropbox(epub_bytes, epub_name)
                     st.success("Bestand staat voor je klaar in Dropbox!")
@@ -879,8 +915,9 @@ def main():
             use_container_width=True,
         ):
             try:
+                book_title = st.session_state.short_title or st.session_state.topic
                 st.session_state.final_pdf_bytes = build_pdf_from_patterns(
-                    st.session_state.topic, list(st.session_state.patterns.values())
+                    book_title, list(st.session_state.patterns.values())
                 )
                 st.session_state.last_error = ""
             except Exception as exc:
@@ -889,22 +926,23 @@ def main():
         st.subheader("ePub Export")
         if st.button("Genereer ePub", use_container_width=True):
             try:
+                book_title = st.session_state.short_title or st.session_state.topic
                 if st.session_state.front_matter and st.session_state.index_data:
                     markdown_text = assemble_markdown(
-                        st.session_state.topic,
+                        book_title,
                         st.session_state.index_data,
                         st.session_state.patterns,
                         st.session_state.front_matter,
                     )
                 else:
                     markdown_text = assemble_markdown_from_patterns(
-                        st.session_state.topic,
+                        book_title,
                         st.session_state.patterns,
                     )
                 st.session_state.markdown = markdown_text
                 _, epub_bytes = convert_with_pandoc(
                     markdown_text,
-                    st.session_state.topic,
+                    book_title,
                     f"pattern_language_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
                     patterns=list(st.session_state.patterns.values()),
                     author=st.session_state.author.strip() or None,
@@ -912,7 +950,7 @@ def main():
                 st.session_state.epub_bytes = epub_bytes
                 st.session_state.last_error = ""
                 try:
-                    epub_name = make_safe_filename(st.session_state.topic, "epub")
+                    epub_name = make_safe_filename(book_title, "epub")
                     epub_path = upload_to_dropbox(epub_bytes, epub_name)
                     st.success("Bestand staat voor je klaar in Dropbox!")
                     st.info(f"Geüpload naar: {epub_path}")
@@ -927,9 +965,10 @@ def main():
         or st.session_state.final_pdf_bytes
     ):
         st.subheader("Export")
-        pdf_name = make_safe_filename(st.session_state.topic, "pdf")
-        epub_name = make_safe_filename(st.session_state.topic, "epub")
-        final_pdf_name = make_safe_filename(f"{st.session_state.topic}_definitief", "pdf")
+        book_title = st.session_state.short_title or st.session_state.topic
+        pdf_name = make_safe_filename(book_title, "pdf")
+        epub_name = make_safe_filename(book_title, "epub")
+        final_pdf_name = make_safe_filename(f"{book_title}_definitief", "pdf")
         if st.session_state.pdf_bytes:
             st.download_button(
                 "Download PDF",
