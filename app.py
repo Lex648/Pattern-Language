@@ -152,7 +152,7 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
                 f"Onderwerp: {item['title']} Fase: {phase_label} (Focus op {phase_desc})\n\n"
                 "Instructies voor deze run:\n\n"
                 f"Zoek eerst 3 gezaghebbende bronnen die passen bij dit onderwerp en de huidige fase ({phase_label}).\n\n"
-                "Schrijf de Deep Analysis: exact 3 paragrafen, minimaal 450 woorden totaal. "
+                "Schrijf de Deep Analysis: exact 3 paragrafen, totaal ca. 300 woorden. "
                 "Verwerk per paragraaf één bron.\n\n"
                 "Hanteer de 'Anonieme Autoriteit': geen bronvermeldingen of auteursnamen in de tekst zelf.\n\n"
                 "Vermijd alle verboden abstracties; wees zintuiglijk en fysiek.\n\n"
@@ -173,8 +173,7 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
                 "begint met schrijven.\n"
                 "BELANGRIJK: Scheid de 3 paragrafen van de Deep Analysis ALTIJD met een lege regel, "
                 "zodat ze technisch herkenbaar zijn als 3 blokken.\n"
-                "WEES ZEER UITGEBREID. Elke paragraaf moet minimaal 150 woorden bevatten. "
-                "Analyseer de bronnen diepgaand.\n"
+                "Schrijf compact en precies; analyseer de bronnen diepgaand.\n"
                 "Je krijgt per patroon het volgnummer en het totaal (20).\n"
                 "Bepaal op basis van dit nummer of je je in de beginfase (Macro), middenfase (Meso) "
                 "of eindfase (Micro) van het boek bevindt en pas je perspectief daarop aan.\n"
@@ -285,7 +284,7 @@ def assemble_markdown(topic, index_data, patterns, front_matter):
         lines.append("")
         lines.append(pattern["conflict"].strip())
         lines.append("")
-        for paragraph in pattern["paragraphs"]:
+        for paragraph in extract_paragraphs(get_analysis_text(pattern)):
             lines.append(paragraph.strip())
             lines.append("")
         lines.append(pattern["resolution"].strip())
@@ -909,8 +908,13 @@ def main():
                         f"({pattern.get('scale', '')})"
                     )
                     st.markdown(pattern.get("conflict", "Niet gegenereerd"))
-                    for paragraph in extract_paragraphs(pattern.get("paragraphs", [])):
-                        st.markdown(paragraph)
+                    analysis_text = get_analysis_text(pattern)
+                    paragraphs = extract_paragraphs(analysis_text)
+                    if paragraphs:
+                        for paragraph in paragraphs:
+                            st.markdown(paragraph)
+                    else:
+                        st.error("Analysis ontbreekt in de AI-output.")
                     st.markdown(pattern.get("resolution", "Resolutie niet gevonden"))
                     sources = pattern.get("sources") or []
                     st.markdown(f"Bronnen: {'; '.join(sources) if sources else 'Niet gegenereerd'}")
