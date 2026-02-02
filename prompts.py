@@ -14,10 +14,12 @@ STIJLCODE:
 STRUCTUUR PER PATROON (JSON OUTPUT):
 1. title: Krachtig, beeldend, zelfstandig naamwoord.
 2. conflict: Eén vetgedrukte probleemstelling (1–2 zinnen). Geen uitleg.
+   - Formuleer de spanning expliciet: "X wil Y, maar Z maakt Y onmogelijk."
 3. analysis: EXACT 3 paragrafen. Totaal ca. 300 woorden.
    - Elke paragraaf verweeft één bron organisch (Anonieme Autoriteit).
    - Geen auteursnamen of titels in de tekst zelf.
    - Geen didactische uitleg; alleen gedachtebeweging en spanning.
+   - Vermijd vergelijkingen met "zoals", "als" en vage metaforen.
 4. resolution: Start met "Therefore, ...". Een normatief houdingsgebod (kort).
 5. sources: Exact 3 bronnen (Auteur — Titel).
 
