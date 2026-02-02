@@ -157,7 +157,7 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
                 "Hanteer de 'Anonieme Autoriteit': geen bronvermeldingen of auteursnamen in de tekst zelf.\n\n"
                 "Vermijd alle verboden abstracties; wees zintuiglijk en fysiek.\n\n"
                 "Eindig met de 'Therefore' resolutie en de lijst met 3 bronnen.\n\n"
-                "Lever de output in het afgesproken XML-formaat.\n"
+                "Lever de output als valide JSON binnen de afgesproken velden.\n"
             )
         )
     messages = [
@@ -195,7 +195,8 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
                 "Lever je antwoord uitsluitend als een valide JSON-object. Zorg dat de tekst "
                 "in de velden de gevraagde poëtische diepgang en academische strengheid heeft.\n"
                 "De analysis is platte tekst: exact 3 paragrafen met lege regels ertussen. "
-                "Geen LaTeX of technische opmaak.\n"
+                "Geen LaTeX of technische opmaak. Laat analysis nooit leeg.\n"
+                "Gebruik geen placeholders in sources (geen 'Auteur — Titel').\n"
                 f"Schrijf specifiek over {topic}. Wees concreet, vermijd clichés en gebruik de "
                 "drie bronnen voor je analyse. Als je de bronnen niet vermeldt onderaan, is de "
                 "opdracht mislukt.\n"
@@ -226,6 +227,18 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
             patterns = fallback
         else:
             print("RAW AI OUTPUT (no patterns parsed):\n", raw_content)
+    if retry_note is None and any(is_incomplete_pattern(p) for p in patterns):
+        return generate_batch(
+            client,
+            topic,
+            index_entries,
+            batch_numbers,
+            retry_note=(
+                "De vorige output miste analysis-tekst of echte bronnen. "
+                "Vul analysis met precies 3 paragrafen en geef 3 echte bronnen. "
+                "Gebruik geen placeholders."
+            ),
+        )
     return patterns
 
 
@@ -326,6 +339,20 @@ def get_analysis_text(pattern):
     if isinstance(paragraphs, list):
         return "\n\n".join(paragraphs)
     return paragraphs or ""
+
+
+def is_incomplete_pattern(pattern):
+    analysis_text = get_analysis_text(pattern).strip()
+    if not analysis_text:
+        return True
+    if len(extract_paragraphs(analysis_text)) < 3:
+        return True
+    sources = pattern.get("sources") or []
+    if len(sources) != 3:
+        return True
+    if any("Auteur" in source and "Titel" in source for source in sources):
+        return True
+    return False
 
 
 def extract_patterns_from_text(raw_text):
