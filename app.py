@@ -9,6 +9,7 @@ import dropbox
 from dotenv import load_dotenv
 from unidecode import unidecode
 
+from prompts import V4_SYSTEM_PROMPT
 try:
     import pypandoc
 except Exception:
@@ -39,57 +40,6 @@ PDF_CHAR_REPLACEMENTS = {
     "•": "-",
 }
 
-V4_SYSTEM_PROMPT = """
-Je bent een diepgravende academische essayist in de traditie van Christopher Alexander
-(A Pattern Language). Je doel is niet om te adviseren, maar om een denkkader te bieden.
-
-Stijl & Toon:
-
-Taal: Poëtisch, observationeel en tijdloos; helder, ritmisch en onderzoekend.
-
-Vermijd lijstjes en bullet points; gebruik uitsluitend 'long read' tekstblokken.
-
-Geen marketingtaal of consultancy-jargon. Liever kijken dan verklaren.
-
-Let op ritmische variatie: elk patroon heeft een eigen adem en tempo.
-
-Strikte Anatomie per Patroon:
-
-Titel: Beeldend en krachtig (geen dubbele punten).
-
-The Conflict: Eén vetgedrukte probleemstelling die de spanning tussen wens en realiteit
-blootlegt (geen oplossingen!).
-
-The Deep Analysis (Tripartite): Exact 3 paragrafen van elk ongeveer 100 woorden
-(totaal ca. 300 woorden).
-Elke paragraaf moet een diepgravende synthese zijn van één van de drie bronnen.
-De bronnen moeten het spanningsveld verdiepen, niet louter feiten bevestigen.
-Synthese boven samenvatting: de tekst gaat over het onderwerp en het conflict, niet
-over de boeken zelf. Gebruik inzichten uit de bronnen om een eigen argumentatie op te bouwen.
-Verboden zinnen: start een paragraaf nooit met "In dit boek...", "De auteur zegt..."
-of "Dit hoofdstuk bespreekt...".
-Integratie: verweef de bronnen organisch; de lezer volgt een filosofisch betoog waarin
-bronnen als autoritaire wegwijzers functioneren.
-Flow: zorg voor vloeiende overgangen tussen de drie paragrafen zodat het één doorlopend
-essay van 450 woorden vormt.
-Gouden Regels:
-- Anonieme Autoriteit: noem de namen van de boeken of de auteurs nooit in de lopende tekst
-  van de Deep Analysis; de lezer mag niet merken welk boek je gebruikt.
-- Geïntegreerd Betoog: schrijf vanuit je eigen autoriteit over het onderwerp en het conflict.
-  Gebruik wijsheid uit bronnen als algemene inzichten, niet als expliciete referenties.
-- Focus op het Conflict: elke paragraaf onderzoekt een aspect van de spanning, zonder bronnen
-  te benoemen.
-- De Bronvermelding: de enige plek waar namen staan, is in de lijst "Bronnen" onderaan.
-- Toon: poëtisch, observationeel en tijdloos; niet academisch of recenserend.
-
-The Resolution: Eindig elk patroon met een normatieve formulering die start met:
-"Therefore, ...". Dit is een houdingsgebod, geen instrumentele strategie.
-
-Bronnen: Exact 3 boeken of papers (Auteur — Titel).
-
-Kwaliteitsregel: Elk patroon moet aantoonbaar gedragen worden door zijn bronnen.
-Geen vrijblijvende slotzinnen. Bij twijfel: dieper, scherper, filosofischer.
-"""
 
 load_dotenv()
 DROPBOX_APP_KEY = os.getenv("DROPBOX_APP_KEY", "").strip()
@@ -163,6 +113,7 @@ def generate_short_title(client, topic: str):
 
 def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=None):
     batch_list = [p for p in index_entries if p["number"] in batch_numbers]
+    total_patterns = 20
     retry_suffix = ""
     if retry_note:
         retry_suffix = f"\n{retry_note}"
@@ -178,6 +129,10 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
                 "zodat ze technisch herkenbaar zijn als 3 blokken.\n"
                 "WEES ZEER UITGEBREID. Elke paragraaf moet minimaal 150 woorden bevatten. "
                 "Analyseer de bronnen diepgaand.\n"
+                "Je krijgt per patroon het volgnummer en het totaal (20).\n"
+                "Bepaal op basis van dit nummer of je je in de beginfase (Macro), middenfase (Meso) "
+                "of eindfase (Micro) van het boek bevindt en pas je perspectief daarop aan.\n"
+                "Gebruik deze indeling: 1-7 = Macro, 8-14 = Meso, 15-20 = Micro.\n"
                 "Output als JSON met dit schema:\n"
                 "{"
                 '"patterns": ['
@@ -189,6 +144,7 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
                 "}"
                 "]}\n"
                 f"Onderwerp: {topic}\n"
+                f"Totaal patronen: {total_patterns}\n"
                 f"Indexitems: {json.dumps(batch_list, ensure_ascii=False)}"
                 f"{retry_suffix}"
             ),
@@ -552,9 +508,9 @@ def convert_with_pandoc(markdown_text, title, output_basename, patterns=None, au
 
 
 def upload_to_dropbox(file_content, file_name):
-    app_key = st.secrets.get("DROPBOX_APP_KEY", DROPBOX_APP_KEY)
-    app_secret = st.secrets.get("DROPBOX_APP_SECRET", DROPBOX_APP_SECRET)
-    refresh_token = st.secrets.get("DROPBOX_REFRESH_TOKEN", DROPBOX_REFRESH_TOKEN)
+    app_key = st.secrets.get("DROPBOX_APP_KEY") or DROPBOX_APP_KEY
+    app_secret = st.secrets.get("DROPBOX_APP_SECRET") or DROPBOX_APP_SECRET
+    refresh_token = st.secrets.get("DROPBOX_REFRESH_TOKEN") or DROPBOX_REFRESH_TOKEN
     if not (app_key and app_secret and refresh_token):
         raise RuntimeError(
             "DROPBOX_APP_KEY, DROPBOX_APP_SECRET of DROPBOX_REFRESH_TOKEN ontbreekt in .env."
