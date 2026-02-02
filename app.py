@@ -74,6 +74,8 @@ def generate_index(client, topic: str):
             "content": (
                 "Voer een onderwerp-scan uit en maak een index van precies 20 patronen.\n"
                 "Genereer de 20 patronen als een strikte neerwaartse beweging (een waterval).\n"
+                "Het kernwoord is 'patronen': distilleer uit het onderwerp een breed "
+                "inspiratielandschap en ontdek daarbinnen de patronen die dit boek moeten dragen.\n"
                 "Deel 1: De Context (Macro, ca. 6 patronen) – focus op grote systemen, "
                 "structuren en het brede krachtenveld rond het onderwerp.\n"
                 "Deel 2: De Interactie (Meso, ca. 8 patronen) – focus op plekken, interacties, "
@@ -537,7 +539,7 @@ def markdown_to_pdf_bytes(markdown_text, title):
     return bytes(pdf.output(dest="S"))
 
 
-def build_pdf_from_patterns(title, patterns, foreword=None):
+def build_pdf_from_patterns(title, patterns, foreword=None, tagline=None, index_data=None):
     if FPDF is None:
         raise RuntimeError("fpdf2 ontbreekt. Installeer fpdf2 voor PDF-export.")
 
@@ -545,6 +547,28 @@ def build_pdf_from_patterns(title, patterns, foreword=None):
 
     def sanitize_text(text):
         return normalize_pdf_text(text)
+
+    def render_title_page(pdf, font_name_override=None):
+        heading_font = font_name_override or "Helvetica"
+        pdf.set_font(heading_font, style="B", size=20)
+        pdf.multi_cell(0, 10, sanitize_text(title))
+        pdf.ln(4)
+        if tagline:
+            pdf.set_font(heading_font, size=12)
+            pdf.multi_cell(0, 7, sanitize_text(tagline))
+
+    def render_index_page(pdf, font_name_override=None):
+        if not index_data:
+            return
+        heading_font = font_name_override or "Helvetica"
+        pdf.set_font(heading_font, style="B", size=16)
+        pdf.multi_cell(0, 9, sanitize_text("Index"))
+        pdf.ln(2)
+        pdf.set_font(heading_font, size=12)
+        for item in index_data.get("index", []):
+            line = f"{item['number']}. {item['title']} — {item['description']}"
+            pdf.multi_cell(0, 7, sanitize_text(line))
+            pdf.ln(1)
 
     def render_foreword(pdf, font_name_override=None):
         if not foreword:
@@ -605,6 +629,10 @@ def build_pdf_from_patterns(title, patterns, foreword=None):
     first_pass.set_title(title)
     font_name = "Helvetica"
     first_pass.set_font(font_name, size=12)
+    render_title_page(first_pass, font_name_override=font_name)
+    first_pass.add_page()
+    render_index_page(first_pass, font_name_override=font_name)
+    first_pass.add_page()
     render_foreword(first_pass, font_name_override=font_name)
     if foreword:
         first_pass.add_page()
@@ -616,24 +644,10 @@ def build_pdf_from_patterns(title, patterns, foreword=None):
     pdf.add_page()
     pdf.set_title(title)
     font_name = "Helvetica"
-    pdf.set_font(font_name, style="B", size=18)
-    pdf.multi_cell(0, 10, sanitize_text(title))
-    pdf.ln(2)
-    pdf.set_font(font_name, style="B", size=14)
-    pdf.multi_cell(0, 8, "Inhoudsopgave")
-    pdf.ln(2)
-    pdf.set_font(font_name, size=12)
-    for number, title_text, page_no in toc_entries:
-        display_page = page_no + 1
-        pdf.cell(
-            0,
-            6,
-            sanitize_text(f"{number}. {title_text} .... {display_page}"),
-            ln=1,
-        )
-
+    render_title_page(pdf, font_name_override=font_name)
     pdf.add_page()
-    pdf.set_font(font_name, size=12)
+    render_index_page(pdf, font_name_override=font_name)
+    pdf.add_page()
     render_foreword(pdf, font_name_override=font_name)
     if foreword:
         pdf.add_page()
@@ -661,7 +675,13 @@ def convert_with_pandoc(markdown_text, title, output_basename, patterns=None, au
             common_args.append(f"--metadata=author:{author}")
 
         if patterns:
-            pdf_bytes = build_pdf_from_patterns(title, patterns, foreword=foreword)
+            pdf_bytes = build_pdf_from_patterns(
+                title,
+                patterns,
+                foreword=foreword,
+                tagline=f"Een patroonlandschap rond {title}",
+                index_data=None,
+            )
         else:
             pdf_bytes = markdown_to_pdf_bytes(markdown_text, title)
         pypandoc.convert_file(
@@ -1020,6 +1040,7 @@ def main():
                     st.session_state.front_matter,
                 )
                 st.session_state.markdown = markdown_text
+                tagline = f"Een patroonlandschap rond {book_title}"
                 pdf_bytes, epub_bytes = convert_with_pandoc(
                     markdown_text,
                     book_title,
@@ -1055,12 +1076,15 @@ def main():
         ):
             try:
                 book_title = st.session_state.short_title or st.session_state.topic
+                tagline = f"Een patroonlandschap rond {book_title}"
                 st.session_state.final_pdf_bytes = build_pdf_from_patterns(
                     book_title,
                     list(st.session_state.patterns.values()),
                     foreword=st.session_state.front_matter.get("foreword")
                     if st.session_state.front_matter
                     else None,
+                    tagline=tagline,
+                    index_data=st.session_state.index_data,
                 )
                 st.session_state.last_error = ""
             except Exception as exc:
