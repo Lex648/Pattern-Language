@@ -735,6 +735,17 @@ def main():
     init_state()
 
     st.title(APP_TITLE)
+    app_password = st.secrets.get("APP_PASSWORD", "").strip()
+    entered_password = st.sidebar.text_input("Wachtwoord", type="password")
+    if not app_password:
+        st.error("APP_PASSWORD ontbreekt in Streamlit Secrets.")
+        return
+    if not entered_password:
+        st.info("Voer het wachtwoord in om de AI-generator te ontgrendelen.")
+        return
+    if entered_password != app_password:
+        st.error("Wachtwoord onjuist.")
+        return
     st.write(f"Aantal patronen in geheugen: {len(st.session_state.patterns)}")
     st.write("Genereer een volledig Pattern Language boek in academisch Nederlands.")
 
