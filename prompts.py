@@ -29,6 +29,8 @@ STRUCTUUR PER PATROON (JSON OUTPUT):
    - Leg de spanning uit met conceptuele precisie (geen poëtische mist).
    - Vermijd containerwoorden zoals "omgeving", "structuur", "proces", "dialoog" of "context"
      tenzij ze concreet worden uitgewerkt in een situatie, handeling of praktijk.
+   - Elke paragraaf bevat minstens één concrete handeling (kijken, lopen, lezen, wachten,
+     aanraken, omkeren, negeren, herzien, etc.).
 4. resolution: Start met "Therefore, ...". Een normatief houdingsgebod (kort).
 5. sources: Exact 3 bronnen (Auteur — Titel).
 

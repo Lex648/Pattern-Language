@@ -179,6 +179,8 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
                 "Noem nooit 'een bron', 'een auteur', 'een denker' of vergelijkbare verwijzingen.\n"
                 "Vermijd containerwoorden als 'omgeving', 'structuur', 'proces', 'dialoog', 'context' "
                 "tenzij je ze direct concretiseert.\n"
+                "Elke paragraaf moet minstens één concrete handeling bevatten (kijken, lopen, lezen, "
+                "wachten, aanraken, omkeren, negeren, herzien, etc.).\n"
                 "Ritme per paragraaf: begin met een harde stelling, werk toe naar een concrete "
                 "spanning, eindig met een scherpe wending.\n"
                 "Zoek eerst 3 relevante boeken/titels bij dit specifieke onderwerp voordat je "
