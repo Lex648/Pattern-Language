@@ -127,14 +127,40 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
     retry_suffix = ""
     if retry_note:
         retry_suffix = f"\n{retry_note}"
+    def phase_info(number):
+        if number <= 7:
+            return "Macro", "het grote geheel, context en systeem"
+        if number <= 14:
+            return "Meso", "interactie, tussenlaag en directe omgeving"
+        return "Micro", "detail, textuur en intieme ervaring"
+
+    per_pattern_instructions = []
+    for item in batch_list:
+        phase_label, phase_desc = phase_info(item["number"])
+        per_pattern_instructions.append(
+            (
+                f"Schrijf nu Patroon {item['number']} van de {total_patterns}.\n\n"
+                f"Onderwerp: {item['title']} Fase: {phase_label} (Focus op {phase_desc})\n\n"
+                "Instructies voor deze run:\n\n"
+                f"Zoek eerst 3 gezaghebbende bronnen die passen bij dit onderwerp en de huidige fase ({phase_label}).\n\n"
+                "Schrijf de Deep Analysis: exact 3 paragrafen, minimaal 450 woorden totaal. "
+                "Verwerk per paragraaf één bron.\n\n"
+                "Hanteer de 'Anonieme Autoriteit': geen bronvermeldingen of auteursnamen in de tekst zelf.\n\n"
+                "Vermijd alle verboden abstracties; wees zintuiglijk en fysiek.\n\n"
+                "Eindig met de 'Therefore' resolutie en de lijst met 3 bronnen.\n\n"
+                "Lever de output in het afgesproken XML-formaat.\n"
+            )
+        )
     messages = [
         {"role": "system", "content": V4_SYSTEM_PROMPT},
         {
             "role": "user",
             "content": (
                 "Schrijf de volledige patronen voor de volgende indexitems.\n"
-                "Volg strikt de Strikte Anatomie per Patroon uit de system prompt.\n"
+                "Volg de system prompt letterlijk en strikt.\n"
                 "Verweef de bronnen inhoudelijk in de analyse (geen losse bronvermelding).\n"
+                "Zoek eerst 3 relevante boeken/titels bij dit specifieke onderwerp voordat je "
+                "begint met schrijven.\n"
                 "BELANGRIJK: Scheid de 3 paragrafen van de Deep Analysis ALTIJD met een lege regel, "
                 "zodat ze technisch herkenbaar zijn als 3 blokken.\n"
                 "WEES ZEER UITGEBREID. Elke paragraaf moet minimaal 150 woorden bevatten. "
@@ -143,16 +169,26 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
                 "Bepaal op basis van dit nummer of je je in de beginfase (Macro), middenfase (Meso) "
                 "of eindfase (Micro) van het boek bevindt en pas je perspectief daarop aan.\n"
                 "Gebruik deze indeling: 1-7 = Macro, 8-14 = Meso, 15-20 = Micro.\n"
+                "\n"
+                "Dynamische instructies per patroon:\n"
+                f"{'\n---\n'.join(per_pattern_instructions)}\n"
                 "Output als JSON met dit schema:\n"
                 "{"
                 '"patterns": ['
                 '{"number": 1, "title": "...", "scale": "Macro|Meso|Micro", '
                 '"conflict": "**...**", '
-                '"paragraphs": ["...", "...", "..."], '
+                '"analysis": "drie paragrafen met lege regels ertussen", '
                 '"resolution": "Therefore, ...", '
                 '"sources": ["Auteur — Titel", "Auteur — Titel", "Auteur — Titel"]'
                 "}"
                 "]}\n"
+                "Lever je antwoord uitsluitend als een valide JSON-object. Zorg dat de tekst "
+                "in de velden de gevraagde poëtische diepgang en academische strengheid heeft.\n"
+                "De analysis is platte tekst: exact 3 paragrafen met lege regels ertussen. "
+                "Geen LaTeX of technische opmaak.\n"
+                f"Schrijf specifiek over {topic}. Wees concreet, vermijd clichés en gebruik de "
+                "drie bronnen voor je analyse. Als je de bronnen niet vermeldt onderaan, is de "
+                "opdracht mislukt.\n"
                 f"Onderwerp: {topic}\n"
                 f"Totaal patronen: {total_patterns}\n"
                 f"Indexitems: {json.dumps(batch_list, ensure_ascii=False)}"
@@ -252,7 +288,7 @@ def assemble_markdown_from_patterns(topic, patterns):
         lines.append("")
         lines.append(pattern.get("conflict", "Niet gegenereerd").strip())
         lines.append("")
-        for paragraph in extract_paragraphs(pattern.get("paragraphs", [])):
+        for paragraph in extract_paragraphs(get_analysis_text(pattern)):
             lines.append(paragraph.strip())
             lines.append("")
         lines.append(pattern.get("resolution", "Niet gegenereerd").strip())
@@ -269,6 +305,15 @@ def extract_paragraphs(paragraphs_value):
     if isinstance(paragraphs_value, str):
         return [p for p in (p.strip() for p in paragraphs_value.split("\n\n")) if p]
     return []
+
+
+def get_analysis_text(pattern):
+    if "analysis" in pattern and pattern.get("analysis"):
+        return pattern.get("analysis", "")
+    paragraphs = pattern.get("paragraphs", [])
+    if isinstance(paragraphs, list):
+        return "\n\n".join(paragraphs)
+    return paragraphs or ""
 
 
 def extract_patterns_from_text(raw_text):
@@ -304,14 +349,15 @@ def extract_patterns_from_text(raw_text):
         if sources_match:
             sources = [s.strip() for s in sources_match.group(1).split(";") if s.strip()]
         block_wo_sources = re.sub(r"Bronnen:\s*.+", "", block).strip()
-        paragraphs = extract_paragraphs(block_wo_sources)
+        analysis_text = block_wo_sources
+        paragraphs = extract_paragraphs(analysis_text)
         patterns.append(
             {
                 "number": number,
                 "title": title,
                 "scale": scale,
                 "conflict": conflict,
-                "paragraphs": paragraphs,
+                "analysis": analysis_text,
                 "resolution": resolution,
                 "sources": sources,
             }
@@ -326,7 +372,8 @@ def validate_pattern(pattern):
     conflict = pattern.get("conflict", "").strip()
     if not (conflict.startswith("**") and conflict.endswith("**")):
         raise ValueError("The Conflict moet vetgedrukt zijn en één probleemstelling bevatten.")
-    paragraphs = extract_paragraphs(pattern.get("paragraphs", []))
+    analysis_text = get_analysis_text(pattern)
+    paragraphs = extract_paragraphs(analysis_text)
     if len(paragraphs) != 3:
         raise ValueError("The Deep Analysis moet exact 3 paragrafen bevatten.")
     total_words = sum(len(p.split()) for p in paragraphs)
@@ -427,7 +474,7 @@ def build_pdf_from_patterns(title, patterns):
             if conflict:
                 pdf.multi_cell(0, 6, conflict)
                 pdf.ln(1)
-            paragraphs = extract_paragraphs(pattern.get("paragraphs", []))
+            paragraphs = extract_paragraphs(get_analysis_text(pattern))
             for paragraph in paragraphs:
                 pdf.multi_cell(0, 6, sanitize_text(paragraph))
                 pdf.ln(1)
@@ -653,7 +700,7 @@ def store_pattern(pattern, log_container=None):
     pattern.setdefault("title", "Niet gegenereerd")
     pattern.setdefault("scale", "")
     pattern.setdefault("conflict", "Niet gegenereerd")
-    pattern.setdefault("paragraphs", ["Niet gegenereerd", "Niet gegenereerd", "Niet gegenereerd"])
+    pattern.setdefault("analysis", "Niet gegenereerd")
     pattern.setdefault("resolution", "Niet gegenereerd")
     pattern.setdefault("sources", [])
     patterns = dict(st.session_state.patterns)
