@@ -173,6 +173,7 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
                 "Verweef de bronnen inhoudelijk in de analyse (geen losse bronvermelding).\n"
                 "Schrijf als een lens: geen uitleg, geen samenvatting, alleen gedachtebeweging.\n"
                 "Vermijd vergelijkingen met 'zoals' of 'als' en vermijd vage metaforen.\n"
+                "Noem nooit 'een bron', 'een auteur', 'een denker' of vergelijkbare verwijzingen.\n"
                 "Zoek eerst 3 relevante boeken/titels bij dit specifieke onderwerp voordat je "
                 "begint met schrijven.\n"
                 "BELANGRIJK: Scheid de 3 paragrafen van de Deep Analysis ALTIJD met een lege regel, "
@@ -202,7 +203,8 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
                 "De analysis is platte tekst: exact 3 paragrafen met lege regels ertussen. "
                 "Geen LaTeX of technische opmaak. Laat analysis nooit leeg.\n"
                 "Gebruik geen placeholders in sources (geen 'Auteur — Titel').\n"
-                "Conflict moet vetgedrukt zijn en expliciet de spanning formuleren (X wil Y, maar Z).\n"
+                "Conflict moet vetgedrukt zijn en expliciet de spanning formuleren "
+                "(X wil Y, maar Z maakt Y onmogelijk).\n"
                 f"Schrijf specifiek over {topic}. Wees concreet, vermijd clichés en gebruik de "
                 "drie bronnen voor je analyse. Als je de bronnen niet vermeldt onderaan, is de "
                 "opdracht mislukt.\n"
@@ -461,7 +463,8 @@ def markdown_to_pdf_bytes(markdown_text, title):
     if FPDF is None:
         raise RuntimeError("fpdf2 ontbreekt. Installeer fpdf2 voor PDF-export.")
     pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=18)
+    pdf.set_margins(left=22, top=24, right=22)
+    pdf.set_auto_page_break(auto=True, margin=24)
     pdf.add_page()
     pdf.set_title(title)
     font_name = "Helvetica"
@@ -473,7 +476,7 @@ def markdown_to_pdf_bytes(markdown_text, title):
     def write_heading(text, level):
         sizes = {1: 18, 2: 15, 3: 13}
         pdf.set_font(font_name, style="B", size=sizes.get(level, 12))
-        pdf.multi_cell(0, 8, sanitize_text(text))
+        pdf.multi_cell(0, 9, sanitize_text(text))
         pdf.ln(2)
         pdf.set_font(font_name, size=12)
 
@@ -491,13 +494,13 @@ def markdown_to_pdf_bytes(markdown_text, title):
         if line.startswith("# "):
             write_heading(line[2:], 1)
             continue
-        pdf.multi_cell(0, 6, line)
+        pdf.multi_cell(0, 7, line)
         pdf.ln(1)
 
     return bytes(pdf.output(dest="S"))
 
 
-def build_pdf_from_patterns(title, patterns):
+def build_pdf_from_patterns(title, patterns, foreword=None):
     if FPDF is None:
         raise RuntimeError("fpdf2 ontbreekt. Installeer fpdf2 voor PDF-export.")
 
@@ -505,6 +508,18 @@ def build_pdf_from_patterns(title, patterns):
 
     def sanitize_text(text):
         return normalize_pdf_text(text)
+
+    def render_foreword(pdf, font_name_override=None):
+        if not foreword:
+            return
+        heading_font = font_name_override or "Helvetica"
+        pdf.set_font(heading_font, style="B", size=16)
+        pdf.multi_cell(0, 9, sanitize_text("Voorwoord"))
+        pdf.ln(2)
+        pdf.set_font(heading_font, size=12)
+        for paragraph in extract_paragraphs(foreword):
+            pdf.multi_cell(0, 7, sanitize_text(paragraph))
+            pdf.ln(1)
 
     def render_patterns(pdf, capture_pages=False, font_name_override=None):
         toc_entries = []
@@ -528,15 +543,15 @@ def build_pdf_from_patterns(title, patterns):
             pdf.set_font(heading_font, size=12)
             conflict = sanitize_text(pattern.get("conflict", "").strip())
             if conflict:
-                pdf.multi_cell(0, 6, conflict)
+                pdf.multi_cell(0, 7, conflict)
                 pdf.ln(1)
             paragraphs = extract_paragraphs(get_analysis_text(pattern))
             for paragraph in paragraphs:
-                pdf.multi_cell(0, 6, sanitize_text(paragraph))
+                pdf.multi_cell(0, 7, sanitize_text(paragraph))
                 pdf.ln(1)
             resolution = sanitize_text(pattern.get("resolution", "").strip())
             if resolution:
-                pdf.multi_cell(0, 6, resolution)
+                pdf.multi_cell(0, 7, resolution)
                 pdf.ln(1)
             sources = pattern.get("sources", [])
             if sources:
@@ -547,15 +562,20 @@ def build_pdf_from_patterns(title, patterns):
         return toc_entries
 
     first_pass = FPDF()
-    first_pass.set_auto_page_break(auto=True, margin=18)
+    first_pass.set_margins(left=22, top=24, right=22)
+    first_pass.set_auto_page_break(auto=True, margin=24)
     first_pass.add_page()
     first_pass.set_title(title)
     font_name = "Helvetica"
     first_pass.set_font(font_name, size=12)
+    render_foreword(first_pass, font_name_override=font_name)
+    if foreword:
+        first_pass.add_page()
     toc_entries = render_patterns(first_pass, capture_pages=True, font_name_override=font_name)
 
     pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=18)
+    pdf.set_margins(left=22, top=24, right=22)
+    pdf.set_auto_page_break(auto=True, margin=24)
     pdf.add_page()
     pdf.set_title(title)
     font_name = "Helvetica"
@@ -577,12 +597,15 @@ def build_pdf_from_patterns(title, patterns):
 
     pdf.add_page()
     pdf.set_font(font_name, size=12)
+    render_foreword(pdf, font_name_override=font_name)
+    if foreword:
+        pdf.add_page()
     render_patterns(pdf, capture_pages=False, font_name_override=font_name)
 
     return bytes(pdf.output(dest="S"))
 
 
-def convert_with_pandoc(markdown_text, title, output_basename, patterns=None, author=None):
+def convert_with_pandoc(markdown_text, title, output_basename, patterns=None, author=None, foreword=None):
     if pypandoc is None:
         raise RuntimeError("pypandoc ontbreekt. Installeer pandoc en pypandoc.")
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -601,7 +624,7 @@ def convert_with_pandoc(markdown_text, title, output_basename, patterns=None, au
             common_args.append(f"--metadata=author:{author}")
 
         if patterns:
-            pdf_bytes = build_pdf_from_patterns(title, patterns)
+            pdf_bytes = build_pdf_from_patterns(title, patterns, foreword=foreword)
         else:
             pdf_bytes = markdown_to_pdf_bytes(markdown_text, title)
         pypandoc.convert_file(
@@ -966,6 +989,9 @@ def main():
                     f"pattern_language_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
                     patterns=list(st.session_state.patterns.values()),
                     author=st.session_state.author.strip() or None,
+                    foreword=st.session_state.front_matter.get("foreword")
+                    if st.session_state.front_matter
+                    else None,
                 )
                 st.session_state.pdf_bytes = pdf_bytes
                 st.session_state.epub_bytes = epub_bytes
@@ -993,7 +1019,11 @@ def main():
             try:
                 book_title = st.session_state.short_title or st.session_state.topic
                 st.session_state.final_pdf_bytes = build_pdf_from_patterns(
-                    book_title, list(st.session_state.patterns.values())
+                    book_title,
+                    list(st.session_state.patterns.values()),
+                    foreword=st.session_state.front_matter.get("foreword")
+                    if st.session_state.front_matter
+                    else None,
                 )
                 st.session_state.last_error = ""
             except Exception as exc:

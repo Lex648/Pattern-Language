@@ -19,6 +19,7 @@ STRUCTUUR PER PATROON (JSON OUTPUT):
    - Elke paragraaf verweeft één bron organisch (Anonieme Autoriteit).
    - Geen auteursnamen of titels in de tekst zelf.
    - Geen didactische uitleg; alleen gedachtebeweging en spanning.
+   - Noem nooit "een bron", "een auteur", "een denker", "een kenner" of soortgelijke verwijzingen.
    - Vermijd vergelijkingen met "zoals", "als" en vage metaforen.
 4. resolution: Start met "Therefore, ...". Een normatief houdingsgebod (kort).
 5. sources: Exact 3 bronnen (Auteur — Titel).
