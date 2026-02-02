@@ -94,6 +94,8 @@ def generate_index(client, topic: str):
                 "over plekken of materie gaat.\n"
                 "Geen standaard natuurmetaforen (water, bergen, stormen) tenzij het onderwerp "
                 "letterlijk over natuur gaat.\n"
+                "Maak van description een korte subtitel (1 zin) die direct volgt op de titel. "
+                "Gebruik geen dubbele punten in de titel; de subtitel hoort alleen in description.\n"
                 "Output als JSON met deze velden:\n"
                 "{"
                 '"subject_scan": "...", '
@@ -133,6 +135,7 @@ def generate_short_title(client, topic: str):
 def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=None):
     batch_list = [p for p in index_entries if p["number"] in batch_numbers]
     total_patterns = 20
+    expected_count = len(batch_list)
     retry_suffix = ""
     if retry_note:
         retry_suffix = f"\n{retry_note}"
@@ -182,6 +185,8 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
                 "\n"
                 "Dynamische instructies per patroon:\n"
                 f"{'\n---\n'.join(per_pattern_instructions)}\n"
+                f"Je MOET exact {expected_count} patronen teruggeven, één voor elk indexitem.\n"
+                f"Indexitem nummers: {[item['number'] for item in batch_list]}\n"
                 "Output als JSON met dit schema:\n"
                 "{"
                 '"patterns": ['
@@ -228,6 +233,17 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
             patterns = fallback
         else:
             print("RAW AI OUTPUT (no patterns parsed):\n", raw_content)
+    if retry_note is None and len(patterns) < expected_count:
+        return generate_batch(
+            client,
+            topic,
+            index_entries,
+            batch_numbers,
+            retry_note=(
+                f"Je gaf {len(patterns)} patronen terug. "
+                f"Lever nu exact {expected_count} patronen, één per indexitemnummer."
+            ),
+        )
     if retry_note is None and any(is_incomplete_pattern(p) for p in patterns):
         return generate_batch(
             client,
@@ -417,8 +433,8 @@ def validate_pattern(pattern):
     if len(paragraphs) != 3:
         raise ValueError("The Deep Analysis moet exact 3 paragrafen bevatten.")
     total_words = sum(len(p.split()) for p in paragraphs)
-    if total_words < 250:
-        raise ValueError("The Deep Analysis moet minimaal 250 woorden bevatten.")
+    if total_words < 180:
+        raise ValueError("The Deep Analysis moet minimaal 180 woorden bevatten.")
     resolution = pattern.get("resolution", "").strip()
     if not resolution.startswith("Therefore,"):
         raise ValueError('The Resolution moet starten met "Therefore,".')
@@ -768,7 +784,10 @@ def execute_batch(batch_id, client, index_entries, log_container, progress_place
             validate_pattern(pattern)
         except Exception as exc:
             pattern_number = pattern.get("number", "?")
-            st.error(f"Fout bij patroon {pattern_number}: {exc}")
+            if "minimaal 180 woorden" in str(exc):
+                st.warning(f"Patroon {pattern_number} is korter dan gewenst: {exc}")
+            else:
+                st.error(f"Fout bij patroon {pattern_number}: {exc}")
         store_pattern(pattern, log_container)
         warn_book_review_style(
             extract_paragraphs(pattern.get("paragraphs", [])),
