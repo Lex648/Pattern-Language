@@ -73,34 +73,11 @@ def generate_index(client, topic: str):
             "role": "user",
             "content": (
                 "Voer een onderwerp-scan uit en maak een index van precies 20 patronen.\n"
-                "Genereer de 20 patronen als een strikte neerwaartse beweging (een waterval).\n"
-                "Het kernwoord is 'patronen': distilleer uit het onderwerp een breed "
-                "inspiratielandschap en ontdek daarbinnen de patronen die dit boek moeten dragen.\n"
-                "Deel 1: De Context (Macro, ca. 6 patronen) – focus op grote systemen, "
-                "structuren en het brede krachtenveld rond het onderwerp.\n"
-                "Deel 2: De Interactie (Meso, ca. 8 patronen) – focus op plekken, interacties, "
-                "processen en relaties in de directe omgeving van het onderwerp.\n"
-                "Deel 3: De Essentie (Micro, ca. 6 patronen) – focus op zintuigen, details, "
-                "materialiteit en intieme ervaring.\n"
-                "Sorteer-regel: begin bij de meest abstracte/grote onderwerpen en eindig bij de "
-                "meest concrete/kleine details.\n"
-                "Laat de labels Macro/Meso/Micro niet zichtbaar zijn in de uiteindelijke titels.\n"
-                "Titels moeten klinken als hoofdstukken uit 'A Pattern Language', maar mogen "
-                "abstract en conceptueel zijn: denk aan grens, last, breuklijn, resonantie, "
-                "mogelijkheid, geloofwaardigheid, tijdelijkheid.\n"
-                "Gebruik een lexicon dat past bij visionaire kracht: vooruitzien, twijfel, sprong, "
-                "draagkracht, weerstand, signaal, blindheid, vonk, innerlijke referentie, open einde.\n"
-                "Vermijd kosmische of mythische metaforen (zoals kosmische dans, oeroude stromen, "
-                "etherische nevels) tenzij het onderwerp daar letterlijk over gaat.\n"
-                "Vermijd concrete fysieke objecten of locaties tenzij het onderwerp letterlijk "
-                "over plekken of materie gaat.\n"
-                "Geen standaard natuurmetaforen (water, bergen, stormen) tenzij het onderwerp "
-                "letterlijk over natuur gaat.\n"
-                "Maak van description een korte subtitel (1 zin) die direct volgt op de titel. "
-                "Gebruik geen dubbele punten in de titel; de subtitel hoort alleen in description.\n"
-                "Elke titel moet uniek zijn (geen duplicaten) en de subtitel moet één concrete "
-                "museum-handeling bevatten (kijken, lopen, wachten, afstand nemen, omkeren, "
-                "notities maken, terugkeren, etc.).\n"
+                "Genereer een index van 20 patronen, geordend van abstract (Macro) naar concreet (Micro).\n"
+                "Gebruik Macro/Meso/Micro labels in de JSON-output, maar laat deze labels "
+                "niet zichtbaar zijn in de titels of beschrijvingen.\n"
+                "Titels: krachtig en beeldend, zonder dubbele punten.\n"
+                "Descriptions: korte samenvatting per patroon (1 zin).\n"
                 "Output als JSON met deze velden:\n"
                 "{"
                 '"subject_scan": "...", '
@@ -115,9 +92,6 @@ def generate_index(client, topic: str):
     index = data.get("index", [])
     if len(index) != 20:
         raise ValueError("Index is niet precies 20 patronen.")
-    titles = [item.get("title", "").strip().lower() for item in index]
-    if len(set(titles)) != len(titles):
-        raise ValueError("Index bevat dubbele titels.")
     return data
 
 
@@ -148,10 +122,10 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
     if retry_note:
         retry_suffix = f"\n{retry_note}"
     def phase_info(number):
-        if number <= 7:
-            return "Macro", "het grote geheel, context en systeem"
-        if number <= 14:
-            return "Meso", "interactie, tussenlaag en directe omgeving"
+        if number <= 5:
+            return "Macro", "filosofie, context en het grote plaatje"
+        if number <= 10:
+            return "Meso", "structuur, systeem en architectuur"
         return "Micro", "detail, textuur en intieme ervaring"
 
     per_pattern_instructions = []
@@ -163,7 +137,7 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
                 f"Onderwerp: {item['title']} Fase: {phase_label} (Focus op {phase_desc})\n\n"
                 "Instructies voor deze run:\n\n"
                 f"Zoek eerst 3 gezaghebbende bronnen die passen bij dit onderwerp en de huidige fase ({phase_label}).\n\n"
-                "Schrijf de Deep Analysis: exact 3 paragrafen, totaal ca. 300 woorden. "
+                "Schrijf de Deep Analysis: exact 3 paragrafen, minimaal 300 woorden totaal. "
                 "Verwerk per paragraaf één bron.\n\n"
                 "Hanteer de 'Anonieme Autoriteit': geen bronvermeldingen of auteursnamen in de tekst zelf.\n\n"
                 "Vermijd alle verboden abstracties; wees zintuiglijk en fysiek.\n\n"
@@ -179,21 +153,6 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
                 "Schrijf de volledige patronen voor de volgende indexitems.\n"
                 "Volg de system prompt letterlijk en strikt.\n"
                 "Verweef de bronnen inhoudelijk in de analyse (geen losse bronvermelding).\n"
-                "Schrijf als een lens: geen uitleg, geen samenvatting, alleen gedachtebeweging.\n"
-                "Kies voor strakke, argumentatieve denklijnen; vermijd sfeertekst.\n"
-                "Maak het praktisch interpreteerbaar: concretiseer in handelingen, situaties of keuzes.\n"
-                "Schrijf uitsluitend in het Nederlands.\n"
-                "Vermijd vergelijkingen met 'zoals' of 'als' en vermijd vage metaforen.\n"
-                "Noem nooit 'een bron', 'een auteur', 'een denker' of vergelijkbare verwijzingen.\n"
-                "Vermijd containerwoorden als 'omgeving', 'structuur', 'proces', 'dialoog', 'context' "
-                "tenzij je ze direct concretiseert.\n"
-                "Elke paragraaf moet minstens één concrete museum-handeling bevatten "
-                "(kijken naar label, afstand nemen, rondlopen, omkeren, opnieuw positioneren, "
-                "wachten bij een werk, notities maken, blik afwenden, terugkeren).\n"
-                "Woorden als 'context', 'omgeving', 'proces' of 'structuur' mogen alleen "
-                "voorkomen als er direct een concreet museum-voorbeeld volgt.\n"
-                "Ritme per paragraaf: begin met een harde stelling, werk toe naar een concrete "
-                "spanning, eindig met een scherpe wending.\n"
                 "Zoek eerst 3 relevante boeken/titels bij dit specifieke onderwerp voordat je "
                 "begint met schrijven.\n"
                 "BELANGRIJK: Scheid de 3 paragrafen van de Deep Analysis ALTIJD met een lege regel, "
@@ -202,7 +161,7 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
                 "Je krijgt per patroon het volgnummer en het totaal (20).\n"
                 "Bepaal op basis van dit nummer of je je in de beginfase (Macro), middenfase (Meso) "
                 "of eindfase (Micro) van het boek bevindt en pas je perspectief daarop aan.\n"
-                "Gebruik deze indeling: 1-7 = Macro, 8-14 = Meso, 15-20 = Micro.\n"
+                "Gebruik deze indeling: 1-5 = Macro, 6-10 = Meso, 11-20 = Micro.\n"
                 "\n"
                 "Dynamische instructies per patroon:\n"
                 f"{'\n---\n'.join(per_pattern_instructions)}\n"
@@ -474,8 +433,8 @@ def validate_pattern(pattern):
     if len(paragraphs) != 3:
         raise ValueError("The Deep Analysis moet exact 3 paragrafen bevatten.")
     total_words = sum(len(p.split()) for p in paragraphs)
-    if total_words < 180:
-        raise ValueError("The Deep Analysis moet minimaal 180 woorden bevatten.")
+    if total_words < 300:
+        raise ValueError("The Deep Analysis moet minimaal 300 woorden bevatten.")
     resolution = pattern.get("resolution", "").strip()
     if not resolution.startswith("Therefore,"):
         raise ValueError('The Resolution moet starten met "Therefore,".')
@@ -864,7 +823,7 @@ def execute_batch(batch_id, client, index_entries, log_container, progress_place
             validate_pattern(pattern)
         except Exception as exc:
             pattern_number = pattern.get("number", "?")
-            if "minimaal 180 woorden" in str(exc):
+            if "minimaal 300 woorden" in str(exc):
                 st.warning(f"Patroon {pattern_number} is korter dan gewenst: {exc}")
             else:
                 st.error(f"Fout bij patroon {pattern_number}: {exc}")
