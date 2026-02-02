@@ -96,6 +96,9 @@ def generate_index(client, topic: str):
                 "letterlijk over natuur gaat.\n"
                 "Maak van description een korte subtitel (1 zin) die direct volgt op de titel. "
                 "Gebruik geen dubbele punten in de titel; de subtitel hoort alleen in description.\n"
+                "Elke titel moet uniek zijn (geen duplicaten) en de subtitel moet één concrete "
+                "museum-handeling bevatten (kijken, lopen, wachten, afstand nemen, omkeren, "
+                "notities maken, terugkeren, etc.).\n"
                 "Output als JSON met deze velden:\n"
                 "{"
                 '"subject_scan": "...", '
@@ -110,6 +113,9 @@ def generate_index(client, topic: str):
     index = data.get("index", [])
     if len(index) != 20:
         raise ValueError("Index is niet precies 20 patronen.")
+    titles = [item.get("title", "").strip().lower() for item in index]
+    if len(set(titles)) != len(titles):
+        raise ValueError("Index bevat dubbele titels.")
     return data
 
 
@@ -179,8 +185,11 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
                 "Noem nooit 'een bron', 'een auteur', 'een denker' of vergelijkbare verwijzingen.\n"
                 "Vermijd containerwoorden als 'omgeving', 'structuur', 'proces', 'dialoog', 'context' "
                 "tenzij je ze direct concretiseert.\n"
-                "Elke paragraaf moet minstens één concrete handeling bevatten (kijken, lopen, lezen, "
-                "wachten, aanraken, omkeren, negeren, herzien, etc.).\n"
+                "Elke paragraaf moet minstens één concrete museum-handeling bevatten "
+                "(kijken naar label, afstand nemen, rondlopen, omkeren, opnieuw positioneren, "
+                "wachten bij een werk, notities maken, blik afwenden, terugkeren).\n"
+                "Woorden als 'context', 'omgeving', 'proces' of 'structuur' mogen alleen "
+                "voorkomen als er direct een concreet museum-voorbeeld volgt.\n"
                 "Ritme per paragraaf: begin met een harde stelling, werk toe naar een concrete "
                 "spanning, eindig met een scherpe wending.\n"
                 "Zoek eerst 3 relevante boeken/titels bij dit specifieke onderwerp voordat je "
