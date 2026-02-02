@@ -92,15 +92,17 @@ Geen vrijblijvende slotzinnen. Bij twijfel: dieper, scherper, filosofischer.
 """
 
 load_dotenv()
-ENV_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 DROPBOX_APP_KEY = os.getenv("DROPBOX_APP_KEY", "").strip()
 DROPBOX_APP_SECRET = os.getenv("DROPBOX_APP_SECRET", "").strip()
 DROPBOX_REFRESH_TOKEN = os.getenv("DROPBOX_REFRESH_TOKEN", "").strip()
 
 
-def get_client(api_key: str):
+def get_client():
     if OpenAI is None:
         raise RuntimeError("OpenAI SDK ontbreekt. Installeer de openai package.")
+    api_key = st.secrets.get("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY ontbreekt in Streamlit Secrets.")
     return OpenAI(api_key=api_key)
 
 
@@ -631,7 +633,6 @@ def make_safe_filename(title, ext):
 
 def init_state():
     st.session_state.setdefault("topic", "")
-    st.session_state.setdefault("api_key", ENV_API_KEY or "")
     st.session_state.setdefault("author", "")
     st.session_state.setdefault("short_title", "")
     st.session_state.setdefault("index_data", None)
@@ -741,29 +742,19 @@ def main():
         st.subheader("Input")
         topic = st.text_input("Onderwerp", value=st.session_state.topic)
         author = st.text_input("Auteur (voor ePub)", value=st.session_state.author)
-        api_key = st.text_input(
-            "OpenAI API-sleutel",
-            type="password",
-            value=st.session_state.api_key,
-            disabled=bool(ENV_API_KEY),
-        )
-        if ENV_API_KEY:
-            st.caption("API-sleutel geladen uit .env (OPENAI_API_KEY).")
         col_a, col_b = st.columns([1, 1])
         with col_a:
             if st.button("Start nieuw project"):
                 st.session_state.topic = topic
                 st.session_state.author = author
-                st.session_state.api_key = api_key
                 reset_generation()
                 st.rerun()
         with col_b:
             if st.button("Genereer index"):
                 st.session_state.topic = topic
                 st.session_state.author = author
-                st.session_state.api_key = api_key
                 try:
-                    client = get_client(api_key)
+                    client = get_client()
                     st.session_state.index_data = generate_index(client, topic)
                     if not st.session_state.short_title:
                         st.session_state.short_title = generate_short_title(client, topic)
@@ -792,7 +783,7 @@ def main():
 
         if st.session_state.retry_batch_id:
             try:
-                client = get_client(st.session_state.api_key)
+                client = get_client()
                 index_entries = st.session_state.index_data["index"]
                 batch_id = st.session_state.retry_batch_id
                 st.session_state.retry_batch_id = None
@@ -808,7 +799,7 @@ def main():
         if st.button("Genereer volledig boek"):
             batch_id = None
             try:
-                client = get_client(st.session_state.api_key)
+                client = get_client()
                 index_entries = st.session_state.index_data["index"]
                 for batch_id in range(1, 5):
                     if st.session_state.batch_status[batch_id] == "done":
@@ -834,7 +825,7 @@ def main():
             with cols[1]:
                 if st.button(f"Genereer batch {batch_id}"):
                     try:
-                        client = get_client(st.session_state.api_key)
+                        client = get_client()
                         index_entries = st.session_state.index_data["index"]
                         execute_batch(
                             batch_id, client, index_entries, log_container, progress_placeholder, caption_placeholder
