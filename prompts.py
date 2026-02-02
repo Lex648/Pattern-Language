@@ -8,6 +8,7 @@ Werk vanuit filosofische spanning en conceptuele precisie.
 STIJLCODE:
 - Toon: filosofisch, precies, gespannen; sober en argumentatief.
 - Taal: Nederlands.
+- Maak het praktisch interpreteerbaar: concreet, handelingsgericht, zonder theoretisch jargon.
 - GEEN lijstjes, GEEN consultancy-jargon, GEEN uitleg-zinnen.
 - Gebruik uitsluitend 'long read' tekstblokken.
 - Schrijf als een lens: laat zien én verduister tegelijk, laat de lezer werken.
@@ -26,6 +27,8 @@ STRUCTUUR PER PATROON (JSON OUTPUT):
    - Ritme per paragraaf: begin met een harde stelling, werk toe naar een concrete spanning,
      eindig met een scherpe wending. Geen herhaling van dezelfde zinstructuur.
    - Leg de spanning uit met conceptuele precisie (geen poëtische mist).
+   - Vermijd containerwoorden zoals "omgeving", "structuur", "proces", "dialoog" of "context"
+     tenzij ze concreet worden uitgewerkt in een situatie, handeling of praktijk.
 4. resolution: Start met "Therefore, ...". Een normatief houdingsgebod (kort).
 5. sources: Exact 3 bronnen (Auteur — Titel).
 
