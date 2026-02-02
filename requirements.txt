@@ -2,6 +2,5 @@ streamlit
 openai
 pypandoc
 fpdf2
-python-dotenv
 unidecode
 dropbox

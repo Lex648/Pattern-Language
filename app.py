@@ -6,7 +6,6 @@ from datetime import datetime
 
 import streamlit as st
 import dropbox
-from dotenv import load_dotenv
 from unidecode import unidecode
 
 from prompts import V4_SYSTEM_PROMPT
@@ -41,7 +40,6 @@ PDF_CHAR_REPLACEMENTS = {
 }
 
 
-load_dotenv()
 DROPBOX_APP_KEY = os.getenv("DROPBOX_APP_KEY", "").strip()
 DROPBOX_APP_SECRET = os.getenv("DROPBOX_APP_SECRET", "").strip()
 DROPBOX_REFRESH_TOKEN = os.getenv("DROPBOX_REFRESH_TOKEN", "").strip()
@@ -75,6 +73,18 @@ def generate_index(client, topic: str):
             "role": "user",
             "content": (
                 "Voer een onderwerp-scan uit en maak een index van precies 20 patronen.\n"
+                "Genereer de 20 patronen als een strikte neerwaartse beweging (een waterval).\n"
+                "Deel 1: De Context (Macro, ca. 6 patronen) – focus op grote systemen: landschap, "
+                "ecologie, filosofie van water, klimaat en de menselijke plek in de natuur.\n"
+                "Deel 2: De Interactie (Meso, ca. 8 patronen) – focus op de plek zelf: sociale "
+                "dynamiek, techniek van zuivering, grens tussen huis en water, seizoenen en "
+                "ruimtelijke ordening.\n"
+                "Deel 3: De Essentie (Micro, ca. 6 patronen) – focus op de zintuigen: geluid van "
+                "een kabbelende stroom, textuur van een blad, geur van natte aarde, schittering "
+                "van licht.\n"
+                "Sorteer-regel: begin bij de meest abstracte/grote onderwerpen en eindig bij de "
+                "meest concrete/kleine details.\n"
+                "Laat de labels Macro/Meso/Micro niet zichtbaar zijn in de uiteindelijke titels.\n"
                 "Output als JSON met deze velden:\n"
                 "{"
                 '"subject_scan": "...", '
@@ -204,8 +214,7 @@ def assemble_markdown(topic, index_data, patterns, front_matter):
     lines.append("## Index van patronen")
     for item in index_data["index"]:
         lines.append(
-            f"{item['number']}. {item['title']} "
-            f"({item['scale']}) — {item['description']}"
+            f"{item['number']}. {item['title']} — {item['description']}"
         )
         lines.append("")
     lines.append("## Patronen")
@@ -434,7 +443,6 @@ def build_pdf_from_patterns(title, patterns):
                 pdf.ln(2)
         return toc_entries
 
-    # First pass to capture page numbers
     first_pass = FPDF()
     first_pass.set_auto_page_break(auto=True, margin=18)
     first_pass.add_page()
@@ -443,7 +451,6 @@ def build_pdf_from_patterns(title, patterns):
     first_pass.set_font(font_name, size=12)
     toc_entries = render_patterns(first_pass, capture_pages=True, font_name_override=font_name)
 
-    # Second pass with TOC on page 1
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=18)
     pdf.add_page()
@@ -508,12 +515,12 @@ def convert_with_pandoc(markdown_text, title, output_basename, patterns=None, au
 
 
 def upload_to_dropbox(file_content, file_name):
-    app_key = st.secrets.get("DROPBOX_APP_KEY") or DROPBOX_APP_KEY
-    app_secret = st.secrets.get("DROPBOX_APP_SECRET") or DROPBOX_APP_SECRET
-    refresh_token = st.secrets.get("DROPBOX_REFRESH_TOKEN") or DROPBOX_REFRESH_TOKEN
+    app_key = st.secrets.get("DROPBOX_APP_KEY") or os.getenv("DROPBOX_APP_KEY")
+    app_secret = st.secrets.get("DROPBOX_APP_SECRET") or os.getenv("DROPBOX_APP_SECRET")
+    refresh_token = st.secrets.get("DROPBOX_REFRESH_TOKEN") or os.getenv("DROPBOX_REFRESH_TOKEN")
     if not (app_key and app_secret and refresh_token):
         raise RuntimeError(
-            "DROPBOX_APP_KEY, DROPBOX_APP_SECRET of DROPBOX_REFRESH_TOKEN ontbreekt in .env."
+            "DROPBOX_APP_KEY, DROPBOX_APP_SECRET of DROPBOX_REFRESH_TOKEN ontbreekt."
         )
     dbx = dropbox.Dropbox(
         app_key=app_key,
@@ -740,7 +747,7 @@ def main():
     if st.session_state.index_data:
         st.subheader("Index (20 patronen)")
         for item in st.session_state.index_data["index"]:
-            st.write(f"{item['number']}. {item['title']} ({item['scale']}) — {item['description']}")
+            st.write(f"{item['number']}. {item['title']} — {item['description']}")
 
         st.subheader("Batch processing")
         progress_placeholder = st.empty()
