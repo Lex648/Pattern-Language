@@ -95,6 +95,25 @@ def generate_index(client, topic: str):
     return data
 
 
+def generate_subject_scan(client, topic: str):
+    messages = [
+        {"role": "system", "content": V4_SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": (
+                "Stap 0 — Onderwerp-scan: geef exact 10 scherpe observaties/spanningsassen.\n"
+                "Output als JSON met veld: {\"subject_scan\": [\"...\", \"...\"]}\n"
+                f"Onderwerp: {topic}"
+            ),
+        },
+    ]
+    data = call_openai_json(client, messages, temperature=0.4)
+    scan = data.get("subject_scan", [])
+    if not isinstance(scan, list) or len(scan) != 10:
+        raise ValueError("Onderwerp-scan moet exact 10 observaties bevatten.")
+    return scan
+
+
 def generate_short_title(client, topic: str):
     messages = [
         {"role": "system", "content": V4_SYSTEM_PROMPT},
@@ -740,6 +759,9 @@ def init_state():
     st.session_state.setdefault("topic", "")
     st.session_state.setdefault("author", "")
     st.session_state.setdefault("short_title", "")
+    st.session_state.setdefault("subject_scan", [])
+    st.session_state.setdefault("subject_scan_approved", False)
+    st.session_state.setdefault("subject_scan_selected", [])
     st.session_state.setdefault("index_data", None)
     st.session_state.setdefault("patterns", {})
     st.session_state.setdefault("batch_status", {1: "pending", 2: "pending", 3: "pending", 4: "pending"})
@@ -769,6 +791,9 @@ def reset_generation():
     st.session_state.final_pdf_bytes = None
     st.session_state.epub_bytes = None
     st.session_state.short_title = ""
+    st.session_state.subject_scan = []
+    st.session_state.subject_scan_approved = False
+    st.session_state.subject_scan_selected = []
 
 
 def batch_numbers(batch_id):
@@ -869,12 +894,13 @@ def main():
                 reset_generation()
                 st.rerun()
         with col_b:
-            if st.button("Genereer index"):
+            if st.button("Genereer onderwerp-scan"):
                 st.session_state.topic = topic
                 st.session_state.author = author
                 try:
                     client = get_client()
-                    st.session_state.index_data = generate_index(client, topic)
+                    st.session_state.subject_scan = generate_subject_scan(client, topic)
+                    st.session_state.subject_scan_approved = False
                     if not st.session_state.short_title:
                         st.session_state.short_title = generate_short_title(client, topic)
                     st.session_state.last_error = ""
@@ -888,6 +914,28 @@ def main():
                 st.session_state.retry_batch_id = st.session_state.failed_batch_id
                 st.session_state.last_error = ""
                 st.rerun()
+
+    if st.session_state.subject_scan:
+        st.subheader("Onderwerp-scan (kies 5–8 spanningsassen)")
+        selected = []
+        for i, item in enumerate(st.session_state.subject_scan):
+            if st.checkbox(item, key=f"scan_{i}"):
+                selected.append(item)
+        st.session_state.subject_scan_selected = selected
+        if not st.session_state.subject_scan_approved:
+            if st.button("Goedkeuren selectie"):
+                if 5 <= len(st.session_state.subject_scan_selected) <= 8:
+                    st.session_state.subject_scan_approved = True
+                else:
+                    st.session_state.last_error = "Selecteer 5–8 spanningsassen."
+        else:
+            if st.button("Genereer index"):
+                try:
+                    client = get_client()
+                    st.session_state.index_data = generate_index(client, st.session_state.topic)
+                    st.session_state.last_error = ""
+                except Exception as exc:
+                    st.session_state.last_error = str(exc)
 
     if st.session_state.index_data:
         st.subheader("Index (20 patronen)")
