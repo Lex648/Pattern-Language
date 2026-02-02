@@ -172,8 +172,11 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
                 "Volg de system prompt letterlijk en strikt.\n"
                 "Verweef de bronnen inhoudelijk in de analyse (geen losse bronvermelding).\n"
                 "Schrijf als een lens: geen uitleg, geen samenvatting, alleen gedachtebeweging.\n"
+                "Kies voor strakke, argumentatieve denklijnen; vermijd sfeertekst.\n"
                 "Vermijd vergelijkingen met 'zoals' of 'als' en vermijd vage metaforen.\n"
                 "Noem nooit 'een bron', 'een auteur', 'een denker' of vergelijkbare verwijzingen.\n"
+                "Ritme per paragraaf: begin met een harde stelling, werk toe naar een concrete "
+                "spanning, eindig met een scherpe wending.\n"
                 "Zoek eerst 3 relevante boeken/titels bij dit specifieke onderwerp voordat je "
                 "begint met schrijven.\n"
                 "BELANGRIJK: Scheid de 3 paragrafen van de Deep Analysis ALTIJD met een lege regel, "
@@ -279,6 +282,25 @@ def generate_front_matter(client, topic: str, index_entries):
         },
     ]
     return call_openai_json(client, messages, temperature=0.4)
+
+
+def generate_foreword_from_pattern(client, topic: str, pattern):
+    messages = [
+        {"role": "system", "content": V4_SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": (
+                "Schrijf een compact voorwoord (max 200-300 woorden) dat de gedachte achter het boek "
+                "verwoordt en de context opent. Baseer dit uitsluitend op het eerste patroon hieronder. "
+                "Geen opsommingen.\n"
+                "Output als JSON met veld: {\"foreword\": \"...\"}\n"
+                f"Onderwerp: {topic}\n"
+                f"Eerste patroon: {json.dumps(pattern, ensure_ascii=False)}"
+            ),
+        },
+    ]
+    data = call_openai_json(client, messages, temperature=0.4)
+    return (data.get("foreword") or "").strip()
 
 
 def assemble_markdown(topic, index_data, patterns, front_matter):
@@ -1062,6 +1084,28 @@ def main():
                     st.info(f"Geüpload naar: {epub_path}")
                 except Exception as exc:
                     st.error(f"Dropbox upload mislukt: {exc}")
+            except Exception as exc:
+                st.session_state.last_error = str(exc)
+
+        st.subheader("Voorwoord")
+        if st.button("Genereer voorwoord op basis van patroon 1", use_container_width=True):
+            try:
+                client = get_client()
+                pattern_1 = st.session_state.patterns.get(1)
+                if not pattern_1:
+                    raise RuntimeError("Patroon 1 ontbreekt.")
+                foreword = generate_foreword_from_pattern(client, st.session_state.topic, pattern_1)
+                if not foreword:
+                    raise RuntimeError("Voorwoord ontbreekt in de AI-output.")
+                if not st.session_state.front_matter:
+                    st.session_state.front_matter = {
+                        "foreword": foreword,
+                        "reading_instructions": ["", "", ""],
+                        "afterword": "",
+                    }
+                else:
+                    st.session_state.front_matter["foreword"] = foreword
+                st.success("Voorwoord bijgewerkt.")
             except Exception as exc:
                 st.session_state.last_error = str(exc)
 
