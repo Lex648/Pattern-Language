@@ -1247,6 +1247,26 @@ def main():
                                 st.session_state.last_error = ""
                             except Exception as exc:
                                 st.session_state.last_error = str(exc)
+                        pattern = st.session_state.patterns.get(number)
+                        if pattern:
+                            st.markdown(
+                                f"### {pattern.get('number', '?')}. "
+                                f"{pattern.get('title', 'Niet gegenereerd')} "
+                                f"({pattern.get('scale', '')})"
+                            )
+                            st.markdown(pattern.get("conflict", "Niet gegenereerd"))
+                            analysis_text = get_analysis_text(pattern)
+                            paragraphs = extract_paragraphs(analysis_text)
+                            if paragraphs:
+                                for paragraph in paragraphs:
+                                    st.markdown(paragraph)
+                            else:
+                                st.error("Analysis ontbreekt in de AI-output.")
+                            st.markdown(pattern.get("resolution", "Resolutie niet gevonden"))
+                            sources = pattern.get("sources") or []
+                            st.markdown(
+                                f"Bronnen: {'; '.join(sources) if sources else 'Niet gegenereerd'}"
+                            )
                     st.divider()
 
     if st.session_state.patterns and not st.session_state.sources_by_number:
