@@ -96,6 +96,10 @@ def generate_index(client, topic: str, subject_scan=None, storyline=None):
     index = data.get("index", [])
     if len(index) != 20:
         raise ValueError("Index is niet precies 20 patronen.")
+    for item in index:
+        description = (item.get("description") or "").strip()
+        if not description or len(description.split()) < 10:
+            raise ValueError("Index beschrijving te kort of ontbreekt.")
     return data
 
 
@@ -157,7 +161,7 @@ def generate_sources_for_index(client, topic: str, index_entries, storyline):
                 "]}\n"
                 f"Onderwerp: {topic}\n"
                 f"Verhaallijn: {json.dumps(storyline or {}, ensure_ascii=False)}\n"
-                f"Index: {json.dumps(index_entries, ensure_ascii=False)}"
+                f"Index (titels + descriptions): {json.dumps(index_entries, ensure_ascii=False)}"
             ),
         },
     ]
@@ -176,6 +180,7 @@ def generate_pattern_single(client, topic, index_item, sources, storyline, subje
             "content": (
                 "Schrijf één patroon volgens de V4-structuur.\n"
                 "Gebruik exact de 3 gegeven bronnen en noem ze alleen in de lijst onderaan.\n"
+                "Gebruik de description als inhoudelijke ruggengraat; werk die concreet uit.\n"
                 "Output als JSON met schema:\n"
                 "{"
                 '"pattern": {'
@@ -189,7 +194,7 @@ def generate_pattern_single(client, topic, index_item, sources, storyline, subje
                 f"Onderwerp: {topic}\n"
                 f"Verhaallijn: {json.dumps(storyline or {}, ensure_ascii=False)}\n"
                 f"Spanningsassen: {json.dumps(subject_scan or [], ensure_ascii=False)}\n"
-                f"Indexitem: {json.dumps(index_item, ensure_ascii=False)}\n"
+                f"Indexitem (titel + description): {json.dumps(index_item, ensure_ascii=False)}\n"
                 f"Bronnen (verplicht): {json.dumps(sources, ensure_ascii=False)}"
             ),
         },
@@ -207,6 +212,8 @@ def generate_pattern_single(client, topic, index_item, sources, storyline, subje
         raise ValueError("Patroon ontbreekt in de AI-output.")
     if pattern.get("number") != index_item.get("number"):
         pattern["number"] = index_item.get("number")
+    if not (index_item.get("description") or "").strip():
+        st.warning("Index description ontbreekt; patroon kan drift vertonen.")
     return pattern
 
 
