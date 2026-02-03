@@ -742,7 +742,7 @@ def convert_with_pandoc(markdown_text, title, output_basename, patterns=None, au
             f.write(markdown_text)
         with open(css_path, "w", encoding="utf-8") as f:
             f.write(
-                "body { font-family: serif; font-size: 10.5pt; line-height: 1.5; margin: 1.2em; }\n"
+                "body { font-family: serif; font-size: 9pt; line-height: 1.2; margin: 1.2em; }\n"
                 "h1, h2, h3 { font-family: sans-serif; }\n"
                 "h1 { font-size: 1.6em; margin-top: 0.6em; }\n"
                 "h2 { font-size: 1.3em; margin-top: 0.8em; }\n"
