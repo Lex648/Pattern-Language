@@ -830,7 +830,7 @@ def upload_to_dropbox(file_content, file_name):
         app_secret=app_secret,
         oauth2_refresh_token=refresh_token,
     )
-    folder_path = "/Rakuten Kobo"
+    folder_path = "/Apps/Rakuten Kobo"
     path = f"{folder_path}/{file_name}"
     dbx.files_upload(file_content, path, mode=dropbox.files.WriteMode("overwrite"))
     try:
@@ -1266,7 +1266,7 @@ def main():
                 st.session_state.last_error = ""
                 try:
                     pdf_name = make_safe_filename(book_title, "pdf")
-                    epub_name = make_safe_filename(book_title, "epub")
+                    epub_name = make_safe_filename(f"{book_title}.kepub", "epub")
                     pdf_path = upload_to_dropbox(pdf_bytes, pdf_name)
                     epub_path = upload_to_dropbox(epub_bytes, epub_name)
                     st.success("Bestand staat voor je klaar in Dropbox!")
@@ -1327,7 +1327,7 @@ def main():
                 st.session_state.epub_bytes = epub_bytes
                 st.session_state.last_error = ""
                 try:
-                    epub_name = make_safe_filename(book_title, "epub")
+                    epub_name = make_safe_filename(f"{book_title}.kepub", "epub")
                     epub_path = upload_to_dropbox(epub_bytes, epub_name)
                     st.success("Bestand staat voor je klaar in Dropbox!")
                     st.info(f"Geüpload naar: {epub_path}")
@@ -1366,7 +1366,7 @@ def main():
         st.subheader("Export")
         book_title = st.session_state.short_title or st.session_state.topic
         pdf_name = make_safe_filename(book_title, "pdf")
-        epub_name = make_safe_filename(book_title, "epub")
+        epub_name = make_safe_filename(f"{book_title}.kepub", "epub")
         final_pdf_name = make_safe_filename(f"{book_title}_definitief", "pdf")
         if st.button("Genereer ePub (test)"):
             try:
