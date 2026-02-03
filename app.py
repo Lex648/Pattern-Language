@@ -116,6 +116,86 @@ def generate_subject_scan(client, topic: str):
     return scan
 
 
+def generate_storyline(client, topic: str, subject_scan):
+    messages = [
+        {"role": "system", "content": V4_SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": (
+                "Stap 1 — Macro→Micro verhaallijn: schrijf een compacte verhaallijn "
+                "(ca. 150–250 woorden) die het onderwerp van Macro naar Micro beweegt.\n"
+                "Gebruik de spanningsassen als ruggengraat.\n"
+                "Output als JSON met veld: {\"storyline\": \"...\"}\n"
+                f"Onderwerp: {topic}\n"
+                f"Spanningsassen: {json.dumps(subject_scan or [], ensure_ascii=False)}"
+            ),
+        },
+    ]
+    data = call_openai_json(client, messages, temperature=0.4)
+    storyline = (data.get("storyline") or "").strip()
+    if not storyline:
+        raise ValueError("Verhaallijn ontbreekt in de AI-output.")
+    return storyline
+
+
+def generate_sources_for_index(client, topic: str, index_entries, storyline):
+    messages = [
+        {"role": "system", "content": V4_SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": (
+                "Stap 3 — Bronnen: kies exact 3 gezaghebbende bronnen per patroon.\n"
+                "Output als JSON met schema:\n"
+                "{"
+                '"sources": ['
+                '{"number": 1, "sources": ["Auteur — Titel", "Auteur — Titel", "Auteur — Titel"]}'
+                "]}\n"
+                f"Onderwerp: {topic}\n"
+                f"Verhaallijn: {storyline}\n"
+                f"Index: {json.dumps(index_entries, ensure_ascii=False)}"
+            ),
+        },
+    ]
+    data = call_openai_json(client, messages, temperature=0.3)
+    sources = data.get("sources", [])
+    if not isinstance(sources, list) or len(sources) != 20:
+        raise ValueError("Bronnenlijst moet 20 items bevatten.")
+    return {item["number"]: item["sources"] for item in sources}
+
+
+def generate_pattern_single(client, topic, index_item, sources, storyline, subject_scan):
+    messages = [
+        {"role": "system", "content": V4_SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": (
+                "Schrijf één patroon volgens de V4-structuur.\n"
+                "Gebruik exact de 3 gegeven bronnen en noem ze alleen in de lijst onderaan.\n"
+                "Output als JSON met schema:\n"
+                "{"
+                '"pattern": {'
+                '"number": 1, "title": "...", "scale": "Macro|Meso|Micro", '
+                '"conflict": "**...**", '
+                '"analysis": "drie paragrafen met lege regels ertussen", '
+                '"resolution": "Therefore, ...", '
+                '"sources": ["Auteur — Titel", "Auteur — Titel", "Auteur — Titel"]'
+                "}"
+                "}\n"
+                f"Onderwerp: {topic}\n"
+                f"Verhaallijn: {storyline}\n"
+                f"Spanningsassen: {json.dumps(subject_scan or [], ensure_ascii=False)}\n"
+                f"Indexitem: {json.dumps(index_item, ensure_ascii=False)}\n"
+                f"Bronnen (verplicht): {json.dumps(sources, ensure_ascii=False)}"
+            ),
+        },
+    ]
+    data = call_openai_json(client, messages, temperature=0.4)
+    pattern = data.get("pattern")
+    if not pattern:
+        raise ValueError("Patroon ontbreekt in de AI-output.")
+    return pattern
+
+
 def generate_short_title(client, topic: str):
     messages = [
         {"role": "system", "content": V4_SYSTEM_PROMPT},
@@ -764,6 +844,9 @@ def init_state():
     st.session_state.setdefault("subject_scan", [])
     st.session_state.setdefault("subject_scan_approved", False)
     st.session_state.setdefault("subject_scan_selected", [])
+    st.session_state.setdefault("storyline", "")
+    st.session_state.setdefault("storyline_approved", False)
+    st.session_state.setdefault("sources_by_number", {})
     st.session_state.setdefault("index_data", None)
     st.session_state.setdefault("patterns", {})
     st.session_state.setdefault("batch_status", {1: "pending", 2: "pending", 3: "pending", 4: "pending"})
@@ -796,6 +879,9 @@ def reset_generation():
     st.session_state.subject_scan = []
     st.session_state.subject_scan_approved = False
     st.session_state.subject_scan_selected = []
+    st.session_state.storyline = ""
+    st.session_state.storyline_approved = False
+    st.session_state.sources_by_number = {}
 
 
 def batch_numbers(batch_id):
@@ -926,87 +1012,117 @@ def main():
         st.session_state.subject_scan_selected = selected
         selected_count = len(st.session_state.subject_scan_selected)
         st.caption(f"Geselecteerd: {selected_count} (kies 5–8)")
-        if st.button("Genereer index"):
+        if st.button("Genereer verhaallijn"):
             if 5 <= selected_count <= 8:
                 try:
                     client = get_client()
                     st.session_state.subject_scan_approved = True
-                    st.session_state.index_data = generate_index(
+                    st.session_state.storyline = generate_storyline(
                         client,
                         st.session_state.topic,
                         st.session_state.subject_scan_selected,
                     )
+                    st.session_state.storyline_approved = False
                     st.session_state.last_error = ""
                 except Exception as exc:
                     st.session_state.last_error = str(exc)
             else:
                 st.session_state.last_error = "Selecteer 5–8 spanningsassen."
 
+    if st.session_state.storyline:
+        st.subheader("Verhaallijn (Macro → Micro)")
+        st.write(st.session_state.storyline)
+        if st.button("Goedkeuren verhaallijn"):
+            st.session_state.storyline_approved = True
+
+    if st.session_state.storyline_approved:
+        if st.button("Genereer index"):
+            try:
+                client = get_client()
+                st.session_state.index_data = generate_index(
+                    client,
+                    st.session_state.topic,
+                    st.session_state.subject_scan_selected,
+                )
+                st.session_state.last_error = ""
+            except Exception as exc:
+                st.session_state.last_error = str(exc)
+
     if st.session_state.index_data:
         st.subheader("Index (20 patronen)")
         for item in st.session_state.index_data["index"]:
             st.write(f"{item['number']}. {item['title']} — {item['description']}")
-
-        st.subheader("Batch processing")
-        progress_placeholder = st.empty()
-        caption_placeholder = st.empty()
-        log_container = st.container()
-        update_progress(progress_placeholder, caption_placeholder)
-
-        if st.session_state.retry_batch_id:
+        if st.button("Genereer bronnen per patroon"):
             try:
                 client = get_client()
-                index_entries = st.session_state.index_data["index"]
-                batch_id = st.session_state.retry_batch_id
-                st.session_state.retry_batch_id = None
-                execute_batch(
-                    batch_id, client, index_entries, log_container, progress_placeholder, caption_placeholder
+                st.session_state.sources_by_number = generate_sources_for_index(
+                    client,
+                    st.session_state.topic,
+                    st.session_state.index_data["index"],
+                    st.session_state.storyline,
                 )
                 st.session_state.last_error = ""
-                st.session_state.failed_batch_id = None
             except Exception as exc:
                 st.session_state.last_error = str(exc)
-                st.session_state.failed_batch_id = batch_id
 
-        if st.button("Genereer volledig boek"):
-            batch_id = None
-            try:
-                client = get_client()
-                index_entries = st.session_state.index_data["index"]
-                for batch_id in range(1, 5):
-                    if st.session_state.batch_status[batch_id] == "done":
-                        continue
-                    execute_batch(
-                        batch_id, client, index_entries, log_container, progress_placeholder, caption_placeholder
-                    )
-                st.session_state.front_matter = generate_front_matter(
-                    client, st.session_state.topic, index_entries
-                )
-                st.session_state.last_error = ""
-                st.session_state.failed_batch_id = None
-            except Exception as exc:
-                st.session_state.last_error = str(exc)
-                st.session_state.failed_batch_id = batch_id
+        if st.session_state.sources_by_number:
+            st.subheader("Patronen (per hoofdstuk)")
+            progress_placeholder = st.empty()
+            caption_placeholder = st.empty()
+            log_container = st.container()
+            update_progress(progress_placeholder, caption_placeholder)
 
-        for batch_id in range(1, 5):
-            status = st.session_state.batch_status[batch_id]
-            label = f"Batch {batch_id} ({batch_numbers(batch_id)[0]}-{batch_numbers(batch_id)[-1]})"
-            cols = st.columns([2, 1])
-            with cols[0]:
-                st.write(f"{label}: {status}")
-            with cols[1]:
-                if st.button(f"Genereer batch {batch_id}"):
-                    try:
-                        client = get_client()
-                        index_entries = st.session_state.index_data["index"]
-                        execute_batch(
-                            batch_id, client, index_entries, log_container, progress_placeholder, caption_placeholder
+            if st.button("Genereer alle patronen (1 voor 1)"):
+                try:
+                    client = get_client()
+                    for item in st.session_state.index_data["index"]:
+                        number = item["number"]
+                        if number in st.session_state.patterns:
+                            continue
+                        pattern = generate_pattern_single(
+                            client,
+                            st.session_state.topic,
+                            item,
+                            st.session_state.sources_by_number.get(number, []),
+                            st.session_state.storyline,
+                            st.session_state.subject_scan_selected,
                         )
-                        st.session_state.last_error = ""
-                        st.session_state.failed_batch_id = None
-                    except Exception as exc:
-                        st.session_state.last_error = str(exc)
-                        st.session_state.failed_batch_id = batch_id
+                        try:
+                            validate_pattern(pattern)
+                        except Exception as exc:
+                            st.warning(f"Patroon {number} validatie: {exc}")
+                        store_pattern(pattern, log_container)
+                        update_progress(progress_placeholder, caption_placeholder)
+                    st.session_state.last_error = ""
+                except Exception as exc:
+                    st.session_state.last_error = str(exc)
+
+            for item in st.session_state.index_data["index"]:
+                number = item["number"]
+                cols = st.columns([3, 1])
+                with cols[0]:
+                    st.write(f"{number}. {item['title']}")
+                with cols[1]:
+                    if st.button(f"Genereer {number}", key=f"gen_{number}"):
+                        try:
+                            client = get_client()
+                            pattern = generate_pattern_single(
+                                client,
+                                st.session_state.topic,
+                                item,
+                                st.session_state.sources_by_number.get(number, []),
+                                st.session_state.storyline,
+                                st.session_state.subject_scan_selected,
+                            )
+                            try:
+                                validate_pattern(pattern)
+                            except Exception as exc:
+                                st.warning(f"Patroon {number} validatie: {exc}")
+                            store_pattern(pattern, log_container)
+                            update_progress(progress_placeholder, caption_placeholder)
+                            st.session_state.last_error = ""
+                        except Exception as exc:
+                            st.session_state.last_error = str(exc)
 
         if st.session_state.patterns:
             st.subheader("Gegenereerde Patronen")
