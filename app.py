@@ -736,8 +736,20 @@ def convert_with_pandoc(markdown_text, title, output_basename, patterns=None, au
     with tempfile.TemporaryDirectory() as tmpdir:
         md_path = os.path.join(tmpdir, f"{output_basename}.md")
         epub_path = os.path.join(tmpdir, f"{output_basename}.epub")
+        css_path = os.path.join(tmpdir, "epub.css")
+        cover_path = os.path.join(tmpdir, "cover.svg")
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(markdown_text)
+        with open(css_path, "w", encoding="utf-8") as f:
+            f.write(
+                "body { font-family: serif; font-size: 10.5pt; line-height: 1.5; margin: 1.2em; }\n"
+                "h1, h2, h3 { font-family: sans-serif; }\n"
+                "h1 { font-size: 1.6em; margin-top: 0.6em; }\n"
+                "h2 { font-size: 1.3em; margin-top: 0.8em; }\n"
+                "h3 { font-size: 1.1em; margin-top: 0.8em; }\n"
+                "p { margin: 0 0 0.8em 0; }\n"
+            )
+        generate_epub_cover_svg(title, cover_path)
 
         common_args = [
             "--toc",
@@ -762,13 +774,47 @@ def convert_with_pandoc(markdown_text, title, output_basename, patterns=None, au
             md_path,
             "epub",
             outputfile=epub_path,
-            extra_args=common_args + ["--epub-chapter-level=2"],
+            extra_args=common_args
+            + ["--epub-chapter-level=2", f"--css={css_path}", f"--epub-cover-image={cover_path}"],
         )
 
         with open(epub_path, "rb") as f:
             epub_bytes = f.read()
 
     return pdf_bytes, epub_bytes
+
+
+def generate_epub_cover_svg(title, output_path):
+    safe_title = (title or "").strip()
+    bg_colors = ["#1f2937", "#374151", "#1e3a8a", "#334155", "#0f172a"]
+    color_index = sum(ord(c) for c in safe_title) % len(bg_colors)
+    bg = bg_colors[color_index]
+    subtitle = "A Pattern Language"
+    svg = (
+        "<?xml version='1.0' encoding='UTF-8'?>"
+        "<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='2560' viewBox='0 0 1600 2560'>"
+        f"<rect width='1600' height='2560' fill='{bg}'/>"
+        "<rect x='140' y='320' width='1320' height='1920' fill='none' stroke='#ffffff' stroke-width='4'/>"
+        f"<text x='800' y='1180' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' "
+        "font-size='110' fill='#ffffff'>"
+        f"{escape_xml_text(safe_title)}</text>"
+        f"<text x='800' y='1320' text-anchor='middle' font-family='Helvetica, Arial, sans-serif' "
+        "font-size='52' fill='#e5e7eb'>"
+        f"{escape_xml_text(subtitle)}</text>"
+        "</svg>"
+    )
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(svg)
+
+
+def escape_xml_text(text):
+    return (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&apos;")
+    )
 
 
 def upload_to_dropbox(file_content, file_name):
@@ -784,14 +830,17 @@ def upload_to_dropbox(file_content, file_name):
         app_secret=app_secret,
         oauth2_refresh_token=refresh_token,
     )
-    path = f"/Kobo/MyBooks/{file_name}"
+    folder_path = "/Apps/Rakuten Kobo"
+    path = f"{folder_path}/{file_name}"
     dbx.files_upload(file_content, path, mode=dropbox.files.WriteMode("overwrite"))
-    update_simple_index(dbx)
+    try:
+        update_simple_index(dbx, folder_path)
+    except Exception:
+        pass
     return path
 
 
-def update_simple_index(dbx):
-    folder_path = "/Kobo/MyBooks"
+def update_simple_index(dbx, folder_path="/Apps/Rakuten Kobo"):
     entries = dbx.files_list_folder(folder_path).entries
     files = [
         entry.name
@@ -1319,6 +1368,27 @@ def main():
         pdf_name = make_safe_filename(book_title, "pdf")
         epub_name = make_safe_filename(book_title, "epub")
         final_pdf_name = make_safe_filename(f"{book_title}_definitief", "pdf")
+        if st.button("Genereer ePub (test)"):
+            try:
+                markdown_text = assemble_markdown_from_patterns(
+                    book_title,
+                    st.session_state.patterns,
+                )
+                st.session_state.markdown = markdown_text
+                _, epub_bytes = convert_with_pandoc(
+                    markdown_text,
+                    book_title,
+                    f"pattern_language_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                    patterns=list(st.session_state.patterns.values()),
+                    author=st.session_state.author.strip() or None,
+                    foreword=st.session_state.front_matter.get("foreword")
+                    if st.session_state.front_matter
+                    else None,
+                )
+                st.session_state.epub_bytes = epub_bytes
+                st.session_state.last_error = ""
+            except Exception as exc:
+                st.session_state.last_error = str(exc)
         if st.session_state.pdf_bytes:
             st.download_button(
                 "Download PDF",
