@@ -830,7 +830,7 @@ def upload_to_dropbox(file_content, file_name):
         app_secret=app_secret,
         oauth2_refresh_token=refresh_token,
     )
-    folder_path = "/Apps/Rakuten Kobo"
+    folder_path = "/Rakuten Kobo"
     path = f"{folder_path}/{file_name}"
     dbx.files_upload(file_content, path, mode=dropbox.files.WriteMode("overwrite"))
     try:
