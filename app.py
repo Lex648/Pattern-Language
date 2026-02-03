@@ -1146,11 +1146,12 @@ def main():
                 st.session_state.last_error = str(exc)
 
         if st.session_state.sources_by_number:
-            st.subheader("Patronen (per hoofdstuk)")
             progress_placeholder = st.empty()
             caption_placeholder = st.empty()
             log_container = st.container()
             update_progress(progress_placeholder, caption_placeholder)
+
+            st.subheader("Patronen (per hoofdstuk)")
 
             if st.button("Genereer alle patronen (1 voor 1)"):
                 try:
