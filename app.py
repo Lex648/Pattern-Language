@@ -1249,6 +1249,31 @@ def main():
                                 st.session_state.last_error = str(exc)
                     st.divider()
 
+    if st.session_state.patterns and not st.session_state.sources_by_number:
+        st.subheader("Gegenereerde Patronen")
+        patterns_sorted = sorted(
+            st.session_state.patterns.values(), key=lambda p: p["number"], reverse=True
+        )
+        for pattern in patterns_sorted:
+            with st.container():
+                st.markdown(
+                    f"### {pattern.get('number', '?')}. "
+                    f"{pattern.get('title', 'Niet gegenereerd')} "
+                    f"({pattern.get('scale', '')})"
+                )
+                st.markdown(pattern.get("conflict", "Niet gegenereerd"))
+                analysis_text = get_analysis_text(pattern)
+                paragraphs = extract_paragraphs(analysis_text)
+                if paragraphs:
+                    for paragraph in paragraphs:
+                        st.markdown(paragraph)
+                else:
+                    st.error("Analysis ontbreekt in de AI-output.")
+                st.markdown(pattern.get("resolution", "Resolutie niet gevonden"))
+                sources = pattern.get("sources") or []
+                st.markdown(f"Bronnen: {'; '.join(sources) if sources else 'Niet gegenereerd'}")
+                st.divider()
+
         # Weergave van gegenereerde patronen staat nu boven de pakketten
 
         with st.expander("Ruwe AI Output (debug)", expanded=False):
