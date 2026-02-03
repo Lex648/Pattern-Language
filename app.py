@@ -1146,44 +1146,6 @@ def main():
                 st.session_state.last_error = str(exc)
 
         if st.session_state.sources_by_number:
-            st.subheader("Pakketten per patroon")
-            for item in st.session_state.index_data["index"]:
-                number = item["number"]
-                sources = st.session_state.sources_by_number.get(number, [])
-                if sources:
-                    with st.container():
-                        st.markdown(f"**{item['title']} — {item['description']}**")
-                        st.markdown(f"{'; '.join(sources)}")
-                        if st.button(f"Genereer patroon {number}", key=f"gen_pkg_{number}"):
-                            try:
-                                client = get_client()
-                                pattern = generate_pattern_single(
-                                    client,
-                                    st.session_state.topic,
-                                    item,
-                                    sources,
-                                    st.session_state.storyline,
-                                    st.session_state.subject_scan_selected,
-                                )
-                                st.session_state.last_raw_ai_output = json.dumps(
-                                    pattern, ensure_ascii=False, indent=2
-                                )
-                                if pattern.get("number") != number:
-                                    st.warning(
-                                        f"Patroon {number} kreeg nummer {pattern.get('number')} van de AI; gecorrigeerd."
-                                    )
-                                try:
-                                    validate_pattern(pattern)
-                                except Exception as exc:
-                                    st.warning(f"Patroon {number} validatie: {exc}")
-                                store_pattern(pattern, log_container)
-                                update_progress(progress_placeholder, caption_placeholder)
-                                st.session_state.last_error = ""
-                            except Exception as exc:
-                                st.session_state.last_error = str(exc)
-                    st.divider()
-
-        if st.session_state.sources_by_number:
             st.subheader("Patronen (per hoofdstuk)")
             progress_placeholder = st.empty()
             caption_placeholder = st.empty()
@@ -1223,30 +1185,70 @@ def main():
                 except Exception as exc:
                     st.session_state.last_error = str(exc)
 
-        if st.session_state.patterns:
-            st.subheader("Gegenereerde Patronen")
-            patterns_sorted = sorted(
-                st.session_state.patterns.values(), key=lambda p: p["number"], reverse=True
-            )
-            for pattern in patterns_sorted:
-                with st.container():
-                    st.markdown(
-                        f"### {pattern.get('number', '?')}. "
-                        f"{pattern.get('title', 'Niet gegenereerd')} "
-                        f"({pattern.get('scale', '')})"
-                    )
-                    st.markdown(pattern.get("conflict", "Niet gegenereerd"))
-                    analysis_text = get_analysis_text(pattern)
-                    paragraphs = extract_paragraphs(analysis_text)
-                    if paragraphs:
-                        for paragraph in paragraphs:
-                            st.markdown(paragraph)
-                    else:
-                        st.error("Analysis ontbreekt in de AI-output.")
-                    st.markdown(pattern.get("resolution", "Resolutie niet gevonden"))
-                    sources = pattern.get("sources") or []
-                    st.markdown(f"Bronnen: {'; '.join(sources) if sources else 'Niet gegenereerd'}")
+            if st.session_state.patterns:
+                st.subheader("Gegenereerde Patronen")
+                patterns_sorted = sorted(
+                    st.session_state.patterns.values(), key=lambda p: p["number"], reverse=True
+                )
+                for pattern in patterns_sorted:
+                    with st.container():
+                        st.markdown(
+                            f"### {pattern.get('number', '?')}. "
+                            f"{pattern.get('title', 'Niet gegenereerd')} "
+                            f"({pattern.get('scale', '')})"
+                        )
+                        st.markdown(pattern.get("conflict", "Niet gegenereerd"))
+                        analysis_text = get_analysis_text(pattern)
+                        paragraphs = extract_paragraphs(analysis_text)
+                        if paragraphs:
+                            for paragraph in paragraphs:
+                                st.markdown(paragraph)
+                        else:
+                            st.error("Analysis ontbreekt in de AI-output.")
+                        st.markdown(pattern.get("resolution", "Resolutie niet gevonden"))
+                        sources = pattern.get("sources") or []
+                        st.markdown(f"Bronnen: {'; '.join(sources) if sources else 'Niet gegenereerd'}")
+                        st.divider()
+
+        if st.session_state.sources_by_number:
+            st.subheader("Pakketten per patroon")
+            for item in st.session_state.index_data["index"]:
+                number = item["number"]
+                sources = st.session_state.sources_by_number.get(number, [])
+                if sources:
+                    with st.container():
+                        st.markdown(f"**{item['title']} — {item['description']}**")
+                        st.markdown(f"{'; '.join(sources)}")
+                        if st.button(f"Genereer patroon {number}", key=f"gen_pkg_{number}"):
+                            try:
+                                client = get_client()
+                                pattern = generate_pattern_single(
+                                    client,
+                                    st.session_state.topic,
+                                    item,
+                                    sources,
+                                    st.session_state.storyline,
+                                    st.session_state.subject_scan_selected,
+                                )
+                                st.session_state.last_raw_ai_output = json.dumps(
+                                    pattern, ensure_ascii=False, indent=2
+                                )
+                                if pattern.get("number") != number:
+                                    st.warning(
+                                        f"Patroon {number} kreeg nummer {pattern.get('number')} van de AI; gecorrigeerd."
+                                    )
+                                try:
+                                    validate_pattern(pattern)
+                                except Exception as exc:
+                                    st.warning(f"Patroon {number} validatie: {exc}")
+                                store_pattern(pattern, log_container)
+                                update_progress(progress_placeholder, caption_placeholder)
+                                st.session_state.last_error = ""
+                            except Exception as exc:
+                                st.session_state.last_error = str(exc)
                     st.divider()
+
+        # Weergave van gegenereerde patronen staat nu boven de pakketten
 
         with st.expander("Ruwe AI Output (debug)", expanded=False):
             st.text_area(
