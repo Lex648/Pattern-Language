@@ -66,7 +66,7 @@ def call_openai_json(client, messages, temperature=0.4):
     return json.loads(raw_content)
 
 
-def generate_index(client, topic: str):
+def generate_index(client, topic: str, subject_scan=None):
     messages = [
         {"role": "system", "content": V4_SYSTEM_PROMPT},
         {
@@ -78,6 +78,8 @@ def generate_index(client, topic: str):
                 "niet zichtbaar zijn in de titels of beschrijvingen.\n"
                 "Titels: krachtig en beeldend, zonder dubbele punten.\n"
                 "Descriptions: korte samenvatting per patroon (1 zin).\n"
+                f"Gebruik deze geselecteerde spanningsassen als basis: "
+                f"{json.dumps(subject_scan or [], ensure_ascii=False)}\n"
                 "Output als JSON met deze velden:\n"
                 "{"
                 '"subject_scan": "...", '
@@ -922,20 +924,23 @@ def main():
             if st.checkbox(item, key=f"scan_{i}"):
                 selected.append(item)
         st.session_state.subject_scan_selected = selected
-        if not st.session_state.subject_scan_approved:
-            if st.button("Goedkeuren selectie"):
-                if 5 <= len(st.session_state.subject_scan_selected) <= 8:
-                    st.session_state.subject_scan_approved = True
-                else:
-                    st.session_state.last_error = "Selecteer 5–8 spanningsassen."
-        else:
-            if st.button("Genereer index"):
+        selected_count = len(st.session_state.subject_scan_selected)
+        st.caption(f"Geselecteerd: {selected_count} (kies 5–8)")
+        if st.button("Genereer index"):
+            if 5 <= selected_count <= 8:
                 try:
                     client = get_client()
-                    st.session_state.index_data = generate_index(client, st.session_state.topic)
+                    st.session_state.subject_scan_approved = True
+                    st.session_state.index_data = generate_index(
+                        client,
+                        st.session_state.topic,
+                        st.session_state.subject_scan_selected,
+                    )
                     st.session_state.last_error = ""
                 except Exception as exc:
                     st.session_state.last_error = str(exc)
+            else:
+                st.session_state.last_error = "Selecteer 5–8 spanningsassen."
 
     if st.session_state.index_data:
         st.subheader("Index (20 patronen)")
