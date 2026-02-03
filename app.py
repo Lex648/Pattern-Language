@@ -205,6 +205,8 @@ def generate_pattern_single(client, topic, index_item, sources, storyline, subje
             pattern = data
     if not pattern:
         raise ValueError("Patroon ontbreekt in de AI-output.")
+    if pattern.get("number") != index_item.get("number"):
+        pattern["number"] = index_item.get("number")
     return pattern
 
 
@@ -1113,6 +1115,8 @@ def main():
                                 st.session_state.subject_scan_selected,
                             )
                             st.session_state.last_raw_ai_output = json.dumps(pattern, ensure_ascii=False, indent=2)
+                            if pattern.get("number") != number:
+                                st.warning(f"Patroon {number} kreeg nummer {pattern.get('number')} van de AI; gecorrigeerd.")
                             try:
                                 validate_pattern(pattern)
                             except Exception as exc:
