@@ -181,6 +181,7 @@ def generate_pattern_single(client, topic, index_item, sources, storyline, subje
                 "Schrijf één patroon volgens de V4-structuur.\n"
                 "Gebruik exact de 3 gegeven bronnen en noem ze alleen in de lijst onderaan.\n"
                 "Gebruik de description als inhoudelijke ruggengraat; werk die concreet uit.\n"
+                "Gebruik uitsluitend het onderstaande pakket als inhoudelijke input.\n"
                 "Output als JSON met schema:\n"
                 "{"
                 '"pattern": {'
@@ -191,7 +192,6 @@ def generate_pattern_single(client, topic, index_item, sources, storyline, subje
                 '"sources": ["Auteur — Titel", "Auteur — Titel", "Auteur — Titel"]'
                 "}"
                 "}\n"
-                f"Onderwerp: {topic}\n"
                 f"Verhaallijn: {json.dumps(storyline or {}, ensure_ascii=False)}\n"
                 f"Spanningsassen: {json.dumps(subject_scan or [], ensure_ascii=False)}\n"
                 f"Indexitem (titel + description): {json.dumps(index_item, ensure_ascii=False)}\n"
