@@ -1055,12 +1055,12 @@ def main():
         if st.button("Genereer index"):
             try:
                 client = get_client()
-                    st.session_state.index_data = generate_index(
-                        client,
-                        st.session_state.topic,
-                        st.session_state.subject_scan_selected,
-                        st.session_state.storyline,
-                    )
+                st.session_state.index_data = generate_index(
+                    client,
+                    st.session_state.topic,
+                    st.session_state.subject_scan_selected,
+                    st.session_state.storyline,
+                )
                 st.session_state.last_error = ""
             except Exception as exc:
                 st.session_state.last_error = str(exc)
