@@ -191,6 +191,10 @@ def generate_pattern_single(client, topic, index_item, sources, storyline, subje
     ]
     data = call_openai_json(client, messages, temperature=0.4)
     pattern = data.get("pattern")
+    if not pattern and "patterns" in data and isinstance(data.get("patterns"), list):
+        for item in data.get("patterns", []):
+            if item.get("number") == index_item.get("number"):
+                pattern = item
     if not pattern:
         raise ValueError("Patroon ontbreekt in de AI-output.")
     return pattern
@@ -1079,20 +1083,24 @@ def main():
                         number = item["number"]
                         if number in st.session_state.patterns:
                             continue
-                        pattern = generate_pattern_single(
-                            client,
-                            st.session_state.topic,
-                            item,
-                            st.session_state.sources_by_number.get(number, []),
-                            st.session_state.storyline,
-                            st.session_state.subject_scan_selected,
-                        )
                         try:
-                            validate_pattern(pattern)
+                            pattern = generate_pattern_single(
+                                client,
+                                st.session_state.topic,
+                                item,
+                                st.session_state.sources_by_number.get(number, []),
+                                st.session_state.storyline,
+                                st.session_state.subject_scan_selected,
+                            )
+                            st.session_state.last_raw_ai_output = json.dumps(pattern, ensure_ascii=False, indent=2)
+                            try:
+                                validate_pattern(pattern)
+                            except Exception as exc:
+                                st.warning(f"Patroon {number} validatie: {exc}")
+                            store_pattern(pattern, log_container)
+                            update_progress(progress_placeholder, caption_placeholder)
                         except Exception as exc:
-                            st.warning(f"Patroon {number} validatie: {exc}")
-                        store_pattern(pattern, log_container)
-                        update_progress(progress_placeholder, caption_placeholder)
+                            st.error(f"Patroon {number} mislukt: {exc}")
                     st.session_state.last_error = ""
                 except Exception as exc:
                     st.session_state.last_error = str(exc)
@@ -1114,6 +1122,7 @@ def main():
                                 st.session_state.storyline,
                                 st.session_state.subject_scan_selected,
                             )
+                            st.session_state.last_raw_ai_output = json.dumps(pattern, ensure_ascii=False, indent=2)
                             try:
                                 validate_pattern(pattern)
                             except Exception as exc:
