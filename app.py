@@ -66,7 +66,7 @@ def call_openai_json(client, messages, temperature=0.4):
     return json.loads(raw_content)
 
 
-def generate_index(client, topic: str, subject_scan=None):
+def generate_index(client, topic: str, subject_scan=None, storyline=None):
     messages = [
         {"role": "system", "content": V4_SYSTEM_PROMPT},
         {
@@ -77,9 +77,11 @@ def generate_index(client, topic: str, subject_scan=None):
                 "Gebruik Macro/Meso/Micro labels in de JSON-output, maar laat deze labels "
                 "niet zichtbaar zijn in de titels of beschrijvingen.\n"
                 "Titels: krachtig en beeldend, zonder dubbele punten.\n"
-                "Descriptions: korte samenvatting per patroon (1 zin).\n"
+                "Descriptions: uitgebreide samenvatting per patroon (2–3 zinnen) die de inhoud stuurt.\n"
                 f"Gebruik deze geselecteerde spanningsassen als basis: "
                 f"{json.dumps(subject_scan or [], ensure_ascii=False)}\n"
+                f"Gebruik deze Macro/Meso/Micro verhaallijn als kader: "
+                f"{json.dumps(storyline or {}, ensure_ascii=False)}\n"
                 "Output als JSON met deze velden:\n"
                 "{"
                 '"subject_scan": "...", '
@@ -122,20 +124,23 @@ def generate_storyline(client, topic: str, subject_scan):
         {
             "role": "user",
             "content": (
-                "Stap 1 — Macro→Micro verhaallijn: schrijf een compacte verhaallijn "
-                "(ca. 150–250 woorden) die het onderwerp van Macro naar Micro beweegt.\n"
+                "Stap 1 — Macro→Micro verhaallijn: schrijf drie duidelijke delen "
+                "(Macro, Meso, Micro), elk 2–4 zinnen.\n"
                 "Gebruik de spanningsassen als ruggengraat.\n"
-                "Output als JSON met veld: {\"storyline\": \"...\"}\n"
+                "Output als JSON met velden: "
+                "{\"macro\": \"...\", \"meso\": \"...\", \"micro\": \"...\"}\n"
                 f"Onderwerp: {topic}\n"
                 f"Spanningsassen: {json.dumps(subject_scan or [], ensure_ascii=False)}"
             ),
         },
     ]
     data = call_openai_json(client, messages, temperature=0.4)
-    storyline = (data.get("storyline") or "").strip()
-    if not storyline:
-        raise ValueError("Verhaallijn ontbreekt in de AI-output.")
-    return storyline
+    macro = (data.get("macro") or "").strip()
+    meso = (data.get("meso") or "").strip()
+    micro = (data.get("micro") or "").strip()
+    if not (macro and meso and micro):
+        raise ValueError("Verhaallijn (macro/meso/micro) ontbreekt in de AI-output.")
+    return {"macro": macro, "meso": meso, "micro": micro}
 
 
 def generate_sources_for_index(client, topic: str, index_entries, storyline):
@@ -151,7 +156,7 @@ def generate_sources_for_index(client, topic: str, index_entries, storyline):
                 '{"number": 1, "sources": ["Auteur — Titel", "Auteur — Titel", "Auteur — Titel"]}'
                 "]}\n"
                 f"Onderwerp: {topic}\n"
-                f"Verhaallijn: {storyline}\n"
+                f"Verhaallijn: {json.dumps(storyline or {}, ensure_ascii=False)}\n"
                 f"Index: {json.dumps(index_entries, ensure_ascii=False)}"
             ),
         },
@@ -182,7 +187,7 @@ def generate_pattern_single(client, topic, index_item, sources, storyline, subje
                 "}"
                 "}\n"
                 f"Onderwerp: {topic}\n"
-                f"Verhaallijn: {storyline}\n"
+                f"Verhaallijn: {json.dumps(storyline or {}, ensure_ascii=False)}\n"
                 f"Spanningsassen: {json.dumps(subject_scan or [], ensure_ascii=False)}\n"
                 f"Indexitem: {json.dumps(index_item, ensure_ascii=False)}\n"
                 f"Bronnen (verplicht): {json.dumps(sources, ensure_ascii=False)}"
@@ -195,6 +200,9 @@ def generate_pattern_single(client, topic, index_item, sources, storyline, subje
         for item in data.get("patterns", []):
             if item.get("number") == index_item.get("number"):
                 pattern = item
+    if not pattern and isinstance(data, dict) and data.get("number") == index_item.get("number"):
+        if all(key in data for key in ["title", "conflict", "analysis", "resolution", "sources"]):
+            pattern = data
     if not pattern:
         raise ValueError("Patroon ontbreekt in de AI-output.")
     return pattern
@@ -848,7 +856,7 @@ def init_state():
     st.session_state.setdefault("subject_scan", [])
     st.session_state.setdefault("subject_scan_approved", False)
     st.session_state.setdefault("subject_scan_selected", [])
-    st.session_state.setdefault("storyline", "")
+    st.session_state.setdefault("storyline", {})
     st.session_state.setdefault("storyline_approved", False)
     st.session_state.setdefault("sources_by_number", {})
     st.session_state.setdefault("index_data", None)
@@ -883,7 +891,7 @@ def reset_generation():
     st.session_state.subject_scan = []
     st.session_state.subject_scan_approved = False
     st.session_state.subject_scan_selected = []
-    st.session_state.storyline = ""
+    st.session_state.storyline = {}
     st.session_state.storyline_approved = False
     st.session_state.sources_by_number = {}
 
@@ -1035,7 +1043,9 @@ def main():
 
     if st.session_state.storyline:
         st.subheader("Verhaallijn (Macro → Micro)")
-        st.write(st.session_state.storyline)
+        st.write(f"Macro: {st.session_state.storyline.get('macro', '')}")
+        st.write(f"Meso: {st.session_state.storyline.get('meso', '')}")
+        st.write(f"Micro: {st.session_state.storyline.get('micro', '')}")
         if st.button("Goedkeuren verhaallijn"):
             st.session_state.storyline_approved = True
 
@@ -1043,11 +1053,12 @@ def main():
         if st.button("Genereer index"):
             try:
                 client = get_client()
-                st.session_state.index_data = generate_index(
-                    client,
-                    st.session_state.topic,
-                    st.session_state.subject_scan_selected,
-                )
+                    st.session_state.index_data = generate_index(
+                        client,
+                        st.session_state.topic,
+                        st.session_state.subject_scan_selected,
+                        st.session_state.storyline,
+                    )
                 st.session_state.last_error = ""
             except Exception as exc:
                 st.session_state.last_error = str(exc)
@@ -1068,6 +1079,15 @@ def main():
                 st.session_state.last_error = ""
             except Exception as exc:
                 st.session_state.last_error = str(exc)
+
+        if st.session_state.sources_by_number:
+            st.subheader("Bronnen per patroon")
+            for item in st.session_state.index_data["index"]:
+                number = item["number"]
+                sources = st.session_state.sources_by_number.get(number, [])
+                if sources:
+                    st.write(f"{number}. {item['title']}")
+                    st.write("; ".join(sources))
 
         if st.session_state.sources_by_number:
             st.subheader("Patronen (per hoofdstuk)")
