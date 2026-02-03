@@ -818,19 +818,24 @@ def escape_xml_text(text):
 
 
 def upload_to_dropbox(file_content, file_name):
-    app_key = st.secrets.get("DROPBOX_APP_KEY")
-    app_secret = st.secrets.get("DROPBOX_APP_SECRET")
-    refresh_token = st.secrets.get("DROPBOX_REFRESH_TOKEN")
-    if not (app_key and app_secret and refresh_token):
+    if not (
+        st.secrets.get("DROPBOX_REFRESH_TOKEN")
+        and st.secrets.get("DROPBOX_APP_KEY")
+        and st.secrets.get("DROPBOX_APP_SECRET")
+    ):
         raise RuntimeError(
             "DROPBOX_APP_KEY, DROPBOX_APP_SECRET of DROPBOX_REFRESH_TOKEN ontbreekt."
         )
     dbx = dropbox.Dropbox(
-        oauth2_refresh_token=refresh_token,
-        app_key=app_key,
-        app_secret=app_secret,
+        oauth2_refresh_token=st.secrets["DROPBOX_REFRESH_TOKEN"],
+        app_key=st.secrets["DROPBOX_APP_KEY"],
+        app_secret=st.secrets["DROPBOX_APP_SECRET"],
     )
     folder_path = "/Apps/Rakuten Kobo"
+    try:
+        dbx.files_create_folder_v2(folder_path)
+    except Exception:
+        pass
     path = f"{folder_path}/{file_name}"
     dbx.files_upload(file_content, path, mode=dropbox.files.WriteMode("overwrite"))
     try:
