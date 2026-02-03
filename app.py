@@ -182,6 +182,8 @@ def generate_pattern_single(client, topic, index_item, sources, storyline, subje
                 "Gebruik exact de 3 gegeven bronnen en noem ze alleen in de lijst onderaan.\n"
                 "Gebruik de description als inhoudelijke ruggengraat; werk die concreet uit.\n"
                 "Gebruik uitsluitend het onderstaande pakket als inhoudelijke input.\n"
+                "Begin de analysis met een compacte parafrase van de description (1–2 zinnen), "
+                "en ga daarna direct de diepte in.\n"
                 "Output als JSON met schema:\n"
                 "{"
                 '"pattern": {'
