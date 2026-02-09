@@ -111,9 +111,11 @@ def generate_subject_scan(client, topic: str):
             "role": "user",
             "content": (
                 "Stap 0 — Onderwerp-scan: geef exact 10 scherpe, verrassende spanningsassen.\n"
-                "Formuleer elke as als stelling + gevolg.\n"
-                "Elke as bevat: (1) actieve dynamiek (een werkwoord), (2) concrete inzet (wat er\n"
-                "op het spel staat), (3) een onverwachte hoek, (4) een kostenpost/offer.\n"
+                "Formuleer elke as als harde stelling + consequentie (geen 'maar kan', geen softeners).\n"
+                "Elke as bevat: (1) actieve dynamiek (krachtig werkwoord), (2) concrete inzet "
+                "(wat er op het spel staat), (3) onverwachte hoek, (4) kostenpost/offer.\n"
+                "Wat wél: stellig, concreet, ongemakkelijk eerlijk, zonder managementtaal.\n"
+                "Wat niet: 'bevordert', 'verrijkt', 'optimaliseert', 'kan', 'balans'.\n"
                 "Gebruik 1 zin per as, max 18 woorden.\n"
                 "Output als JSON met veld: {\"subject_scan\": [\"...\", \"...\"]}\n"
                 f"Onderwerp: {topic}"
