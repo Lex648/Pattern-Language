@@ -8,7 +8,7 @@ import streamlit as st
 import dropbox
 from unidecode import unidecode
 
-from prompts import V4_SYSTEM_PROMPT
+from prompts import V6_SYSTEM_PROMPT
 try:
     import pypandoc
 except Exception:
@@ -68,7 +68,7 @@ def call_openai_json(client, messages, temperature=0.4):
 
 def generate_index(client, topic: str, subject_scan=None, storyline=None):
     messages = [
-        {"role": "system", "content": V4_SYSTEM_PROMPT},
+        {"role": "system", "content": V6_SYSTEM_PROMPT},
         {
             "role": "user",
             "content": (
@@ -105,7 +105,7 @@ def generate_index(client, topic: str, subject_scan=None, storyline=None):
 
 def generate_subject_scan(client, topic: str):
     messages = [
-        {"role": "system", "content": V4_SYSTEM_PROMPT},
+        {"role": "system", "content": V6_SYSTEM_PROMPT},
         {
             "role": "user",
             "content": (
@@ -124,7 +124,7 @@ def generate_subject_scan(client, topic: str):
 
 def generate_storyline(client, topic: str, subject_scan):
     messages = [
-        {"role": "system", "content": V4_SYSTEM_PROMPT},
+        {"role": "system", "content": V6_SYSTEM_PROMPT},
         {
             "role": "user",
             "content": (
@@ -149,7 +149,7 @@ def generate_storyline(client, topic: str, subject_scan):
 
 def generate_sources_for_index(client, topic: str, index_entries, storyline):
     messages = [
-        {"role": "system", "content": V4_SYSTEM_PROMPT},
+        {"role": "system", "content": V6_SYSTEM_PROMPT},
         {
             "role": "user",
             "content": (
@@ -174,7 +174,7 @@ def generate_sources_for_index(client, topic: str, index_entries, storyline):
 
 def generate_pattern_single(client, topic, index_item, sources, storyline, subject_scan):
     messages = [
-        {"role": "system", "content": V4_SYSTEM_PROMPT},
+        {"role": "system", "content": V6_SYSTEM_PROMPT},
         {
             "role": "user",
             "content": (
@@ -221,7 +221,7 @@ def generate_pattern_single(client, topic, index_item, sources, storyline, subje
 
 def generate_short_title(client, topic: str):
     messages = [
-        {"role": "system", "content": V4_SYSTEM_PROMPT},
+        {"role": "system", "content": V6_SYSTEM_PROMPT},
         {
             "role": "user",
             "content": (
@@ -270,7 +270,7 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
             )
         )
     messages = [
-        {"role": "system", "content": V4_SYSTEM_PROMPT},
+        {"role": "system", "content": V6_SYSTEM_PROMPT},
         {
             "role": "user",
             "content": (
@@ -366,7 +366,7 @@ def generate_batch(client, topic: str, index_entries, batch_numbers, retry_note=
 
 def generate_front_matter(client, topic: str, index_entries):
     messages = [
-        {"role": "system", "content": V4_SYSTEM_PROMPT},
+        {"role": "system", "content": V6_SYSTEM_PROMPT},
         {
             "role": "user",
             "content": (
@@ -386,7 +386,7 @@ def generate_front_matter(client, topic: str, index_entries):
 
 def generate_foreword_from_pattern(client, topic: str, pattern):
     messages = [
-        {"role": "system", "content": V4_SYSTEM_PROMPT},
+        {"role": "system", "content": V6_SYSTEM_PROMPT},
         {
             "role": "user",
             "content": (
