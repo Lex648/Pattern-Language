@@ -109,7 +109,9 @@ def generate_subject_scan(client, topic: str):
         {
             "role": "user",
             "content": (
-                "Stap 0 — Onderwerp-scan: geef exact 10 scherpe observaties/spanningsassen.\n"
+                "Stap 0 — Onderwerp-scan: geef exact 10 scherpe, verrassende spanningsassen.\n"
+                "Vermijd herhaling van het onderwerp en formuleer elke as als een spanning "
+                "tussen twee krachten of perspectieven.\n"
                 "Output als JSON met veld: {\"subject_scan\": [\"...\", \"...\"]}\n"
                 f"Onderwerp: {topic}"
             ),
