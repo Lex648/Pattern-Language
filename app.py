@@ -77,8 +77,7 @@ def generate_index(client, topic: str, subject_scan=None, storyline=None):
                 "Gebruik Macro/Meso/Micro labels in de JSON-output, maar laat deze labels "
                 "niet zichtbaar zijn in de titels of beschrijvingen.\n"
                 "Titels: één woord, maximaal 12 tekens, krachtig en beeldend. Geen dubbele punten.\n"
-                "Vermijd middenwoorden in titels: balans, dialoog, structuur, proces, context.\n"
-                "Descriptions: één zin met de kernspanning, geen uitleg.\n"
+                "Descriptions: één zin in format STELLING → GEVOLG → OFFER. Max 18 woorden.\n"
                 f"Gebruik deze geselecteerde spanningsassen als basis: "
                 f"{json.dumps(subject_scan or [], ensure_ascii=False)}\n"
                 f"Gebruik deze Macro/Meso/Micro verhaallijn als kader: "
@@ -110,13 +109,9 @@ def generate_subject_scan(client, topic: str):
         {
             "role": "user",
             "content": (
-                "Stap 0 — Onderwerp-scan: geef exact 10 scherpe, verrassende spanningsassen.\n"
-                "Formuleer elke as als harde stelling + consequentie (geen 'maar kan', geen softeners).\n"
-                "Elke as bevat: (1) actieve dynamiek (krachtig werkwoord), (2) concrete inzet "
-                "(wat er op het spel staat), (3) onverwachte hoek, (4) kostenpost/offer.\n"
-                "Wat wél: stellig, concreet, ongemakkelijk eerlijk, zonder managementtaal.\n"
-                "Wat niet: 'bevordert', 'verrijkt', 'optimaliseert', 'kan', 'balans'.\n"
-                "Gebruik 1 zin per as, max 18 woorden.\n"
+                "Stap 0 — Onderwerp-scan: geef exact 10 spanningsassen.\n"
+                "Schrijf 1 zin per as in dit format: STELLING → GEVOLG → OFFER.\n"
+                "Max 16 woorden. Geen uitleg. Geen managementtaal.\n"
                 "Output als JSON met veld: {\"subject_scan\": [\"...\", \"...\"]}\n"
                 f"Onderwerp: {topic}"
             ),
@@ -135,11 +130,9 @@ def generate_storyline(client, topic: str, subject_scan):
         {
             "role": "user",
             "content": (
-                "Stap 1 — Macro→Micro verhaallijn: schrijf drie duidelijke delen "
-                "(Macro, Meso, Micro), elk 2–4 zinnen.\n"
-                "Gebruik de spanningsassen als ruggengraat.\n"
-                "Output als JSON met velden: "
-                "{\"macro\": \"...\", \"meso\": \"...\", \"micro\": \"...\"}\n"
+                "Stap 1 — Macro→Micro verhaallijn: schrijf drie regels (Macro, Meso, Micro).\n"
+                "Elke regel volgt: STELLING → GEVOLG → OFFER. Max 20 woorden.\n"
+                "Output als JSON met velden: {\"macro\": \"...\", \"meso\": \"...\", \"micro\": \"...\"}\n"
                 f"Onderwerp: {topic}\n"
                 f"Spanningsassen: {json.dumps(subject_scan or [], ensure_ascii=False)}"
             ),
