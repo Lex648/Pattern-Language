@@ -1120,20 +1120,27 @@ def main():
         st.write(f"Micro: {st.session_state.storyline.get('micro', '')}")
         if st.button("Goedkeuren verhaallijn"):
             st.session_state.storyline_approved = True
+        st.caption(
+            f"Status verhaallijn: {'Goedgekeurd' if st.session_state.storyline_approved else 'Niet goedgekeurd'}"
+        )
 
-    if st.session_state.storyline_approved:
+    if st.session_state.storyline:
         if st.button("Genereer index"):
-            try:
-                client = get_client()
-                st.session_state.index_data = generate_index(
-                    client,
-                    st.session_state.topic,
-                    st.session_state.subject_scan_selected,
-                    st.session_state.storyline,
-                )
-                st.session_state.last_error = ""
-            except Exception as exc:
-                st.session_state.last_error = str(exc)
+            if not st.session_state.storyline_approved:
+                st.session_state.last_error = "Keurt eerst de verhaallijn goed."
+            else:
+                try:
+                    client = get_client()
+                    st.session_state.index_data = generate_index(
+                        client,
+                        st.session_state.topic,
+                        st.session_state.subject_scan_selected,
+                        st.session_state.storyline,
+                    )
+                    st.session_state.last_error = ""
+                    st.success("Index gegenereerd.")
+                except Exception as exc:
+                    st.session_state.last_error = str(exc)
 
     if st.session_state.index_data:
         st.subheader("Index (20 patronen)")
