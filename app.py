@@ -98,8 +98,8 @@ def generate_index(client, topic: str, subject_scan=None, storyline=None):
         raise ValueError("Index is niet precies 20 patronen.")
     for item in index:
         description = (item.get("description") or "").strip()
-        if not description or len(description.split()) < 10:
-            raise ValueError("Index beschrijving te kort of ontbreekt.")
+        if not description or len(description.split()) < 6:
+            st.warning("Index beschrijving is erg kort; verwacht mogelijk minder sturing.")
     return data
 
 
