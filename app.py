@@ -113,8 +113,8 @@ def generate_subject_scan(client, topic: str):
                 "Stap 0 — Onderwerp-scan: geef exact 10 scherpe, verrassende spanningsassen.\n"
                 "Formuleer elke as als stelling + gevolg.\n"
                 "Elke as bevat: (1) actieve dynamiek (een werkwoord), (2) concrete inzet (wat er\n"
-                "op het spel staat), (3) een onverwachte hoek.\n"
-                "Gebruik 1 zin per as. Maak het dwingend en specifiek.\n"
+                "op het spel staat), (3) een onverwachte hoek, (4) een kostenpost/offer.\n"
+                "Gebruik 1 zin per as, max 18 woorden.\n"
                 "Output als JSON met veld: {\"subject_scan\": [\"...\", \"...\"]}\n"
                 f"Onderwerp: {topic}"
             ),
