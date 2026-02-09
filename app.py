@@ -76,8 +76,9 @@ def generate_index(client, topic: str, subject_scan=None, storyline=None):
                 "Genereer een index van 20 patronen, geordend van abstract (Macro) naar concreet (Micro).\n"
                 "Gebruik Macro/Meso/Micro labels in de JSON-output, maar laat deze labels "
                 "niet zichtbaar zijn in de titels of beschrijvingen.\n"
-                "Titels: krachtig en beeldend, zonder dubbele punten.\n"
-                "Descriptions: uitgebreide samenvatting per patroon (2–3 zinnen) die de inhoud stuurt.\n"
+                "Titels: één woord, maximaal 12 tekens, krachtig en beeldend. Geen dubbele punten.\n"
+                "Vermijd middenwoorden in titels: balans, dialoog, structuur, proces, context.\n"
+                "Descriptions: één zin met de kernspanning, geen uitleg.\n"
                 f"Gebruik deze geselecteerde spanningsassen als basis: "
                 f"{json.dumps(subject_scan or [], ensure_ascii=False)}\n"
                 f"Gebruik deze Macro/Meso/Micro verhaallijn als kader: "
@@ -373,9 +374,11 @@ def generate_front_matter(client, topic: str, index_entries):
             "role": "user",
             "content": (
                 "Genereer een voorwoord, drie leesinstructies en een nawoord.\n"
-                "Schrijf als een lens: geen uitleg, geen advies, geen opsommingen.\n"
-                "Voorwoord en nawoord: compact, filosofisch, zonder didactiek.\n"
-                "Leesinstructies: korte, dwingende zinnen (geen bullets, geen nummering).\n"
+                "Voorwoord: 150–200 woorden. Geen uitleg, alleen uitnodiging tot ervaring.\n"
+                "Gebruik één kernbeeld (bijv. kijken zonder uitleg) en één handelingszin "
+                "(bijv. stap terug doen).\n"
+                "Leesinstructies: 3 korte zinnen, zonder nummering.\n"
+                "Nawoord: kort (max 120 woorden), geen conclusie.\n"
                 "Output als JSON met velden: "
                 '{"foreword": "...", "reading_instructions": ["...", "...", "..."], "afterword": "..."}\n'
                 f"Onderwerp: {topic}\n"
