@@ -933,6 +933,7 @@ def init_state():
     st.session_state.setdefault("storyline", {})
     st.session_state.setdefault("storyline_approved", False)
     st.session_state.setdefault("sources_by_number", {})
+    st.session_state.setdefault("index_generated", False)
     st.session_state.setdefault("index_data", None)
     st.session_state.setdefault("patterns", {})
     st.session_state.setdefault("batch_status", {1: "pending", 2: "pending", 3: "pending", 4: "pending"})
@@ -968,6 +969,7 @@ def reset_generation():
     st.session_state.storyline = {}
     st.session_state.storyline_approved = False
     st.session_state.sources_by_number = {}
+    st.session_state.index_generated = False
 
 
 def batch_numbers(batch_id):
@@ -1127,7 +1129,7 @@ def main():
         )
 
     if st.session_state.storyline:
-        if st.button("Genereer index"):
+        if st.button("Genereer index", key="generate_index_btn"):
             if not st.session_state.storyline_approved:
                 st.session_state.last_error = "Keurt eerst de verhaallijn goed."
             else:
@@ -1140,9 +1142,13 @@ def main():
                         st.session_state.storyline,
                     )
                     st.session_state.last_error = ""
+                    st.session_state.index_generated = True
                     st.success("Index gegenereerd.")
                 except Exception as exc:
                     st.session_state.last_error = str(exc)
+        st.caption(
+            f"Status index: {'Gegenereerd' if st.session_state.index_generated else 'Nog niet gegenereerd'}"
+        )
 
     if st.session_state.index_data:
         st.subheader("Index (20 patronen)")
