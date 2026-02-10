@@ -112,8 +112,8 @@ def generate_subject_scan(client, topic: str):
                 "Stap 0 — Onderwerp-scan: geef exact 10 spanningsassen.\n"
                 "Schrijf 1 zin per as in dit format: STELLING → GEVOLG → OFFER.\n"
                 "Max 16 woorden. Geen uitleg. Geen managementtaal.\n"
-                "Balans: minimaal 4 assen met positief gevolg, minimaal 4 met negatief gevolg, "
-                "en 2 onverwachte omkeringen.\n"
+                "Balans: minimaal 7 assen met positief gevolg, maximaal 3 met negatief gevolg.\n"
+                "Formuleer positief: focus op wat mogelijk wordt, niet wat verloren gaat.\n"
                 "Output als JSON met veld: {\"subject_scan\": [\"...\", \"...\"]}\n"
                 f"Onderwerp: {topic}"
             ),
