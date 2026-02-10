@@ -76,8 +76,8 @@ def generate_index(client, topic: str, subject_scan=None, storyline=None):
                 "Genereer een index van 20 patronen, geordend van abstract (Macro) naar concreet (Micro).\n"
                 "Gebruik Macro/Meso/Micro labels in de JSON-output, maar laat deze labels "
                 "niet zichtbaar zijn in de titels of beschrijvingen.\n"
-                "Titels: één woord, maximaal 12 tekens, krachtig en beeldend. Geen dubbele punten.\n"
-                "Descriptions: één zin in format STELLING → GEVOLG → OFFER. Max 18 woorden.\n"
+                "Titels: kort, krachtig en beeldend. Geen dubbele punten.\n"
+                "Descriptions: korte samenvatting per patroon (1–2 zinnen).\n"
                 f"Gebruik deze geselecteerde spanningsassen als basis: "
                 f"{json.dumps(subject_scan or [], ensure_ascii=False)}\n"
                 f"Gebruik deze Macro/Meso/Micro verhaallijn als kader: "
@@ -109,12 +109,8 @@ def generate_subject_scan(client, topic: str):
         {
             "role": "user",
             "content": (
-                "Stap 0 — Onderwerp-scan: geef exact 10 spanningsassen.\n"
-                "Schrijf 1 zin per as in dit format: STELLING → GEVOLG → OFFER.\n"
-                "Max 16 woorden. Geen uitleg. Geen managementtaal.\n"
-                "Balans: minimaal 7 assen met positief gevolg, maximaal 3 met negatief gevolg.\n"
-                "Formuleer positief: focus op wat mogelijk wordt, niet wat verloren gaat.\n"
-                "Vermijd productwoorden (AI, data, gamificatie, tool, app); vertaal naar tijdloze patronen.\n"
+                "Stap 0 — Onderwerp-scan: geef exact 10 scherpe spanningsassen.\n"
+                "Formuleer elke as in één zin. Wees precies en inhoudelijk.\n"
                 "Output als JSON met veld: {\"subject_scan\": [\"...\", \"...\"]}\n"
                 f"Onderwerp: {topic}"
             ),
@@ -134,7 +130,7 @@ def generate_storyline(client, topic: str, subject_scan):
             "role": "user",
             "content": (
                 "Stap 1 — Macro→Micro verhaallijn: schrijf drie regels (Macro, Meso, Micro).\n"
-                "Elke regel volgt: STELLING → GEVOLG → OFFER. Max 20 woorden.\n"
+                "Elke regel is compact (2–4 zinnen) en inhoudelijk scherp.\n"
                 "Output als JSON met velden: {\"macro\": \"...\", \"meso\": \"...\", \"micro\": \"...\"}\n"
                 f"Onderwerp: {topic}\n"
                 f"Spanningsassen: {json.dumps(subject_scan or [], ensure_ascii=False)}"
