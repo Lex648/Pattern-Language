@@ -114,6 +114,7 @@ def generate_subject_scan(client, topic: str):
                 "Max 16 woorden. Geen uitleg. Geen managementtaal.\n"
                 "Balans: minimaal 7 assen met positief gevolg, maximaal 3 met negatief gevolg.\n"
                 "Formuleer positief: focus op wat mogelijk wordt, niet wat verloren gaat.\n"
+                "Vermijd productwoorden (AI, data, gamificatie, tool, app); vertaal naar tijdloze patronen.\n"
                 "Output als JSON met veld: {\"subject_scan\": [\"...\", \"...\"]}\n"
                 f"Onderwerp: {topic}"
             ),
